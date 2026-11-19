@@ -21,3 +21,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+.env
+# secrets and personal Spotify export (served publicly if left in public/)
+.env
+/public/Spotify Account Data/
+.idea/
