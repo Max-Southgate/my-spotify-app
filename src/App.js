@@ -1,260 +1,66 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { getToken, logout } from './authService';
-import { getTopTracks, getTopArtists, getRecentPlays, getTopGenres, getArtistDetails } from './spotifyApi';
+import { loadStreamingHistory } from './exportData';
+import { computeInsights } from './stats';
+import { Sidebar } from './ui';
 import Login from './login';
+import Overview from './Overview';
 import TopTracks from './TopTracks';
 import TopArtists from './TopArtists';
 import TopGenres from './TopGenres';
-import RecentlyPlayed from './RecentlyPlayed';
-import Dashboard from './Dashboard';
 import Insights from './Insights';
-import './App.css';
+
+const PAGES = [
+    ['overview', 'Overview', Overview],
+    ['tracks', 'Top tracks', TopTracks],
+    ['artists', 'Top artists', TopArtists],
+    ['genres', 'Genres', TopGenres],
+    ['insights', 'Insights', Insights],
+];
+const pageFromHash = () => (PAGES.some(([id]) => id === window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'overview');
 
 function App() {
     const [token, setToken] = useState(null);
-    const [tracks, setTracks] = useState([]);
-    const [artists, setArtists] = useState([]);
-    const [genres, setGenres] = useState([]);
-    const [recentlyPlayed, setRecentlyPlayed] = useState([]);
-    const [dashboardData, setDashboardData] = useState({});
-    const [insights, setInsights] = useState({});
-    const [streamingData, setStreamingData] = useState([]);
-    const [activeTab, setActiveTab] = useState('dashboard');
-    const [timeRange, setTimeRange] = useState('short_term');
-    const [totalMinutesListened, setTotalMinutesListened] = useState(0);
+    const [checking, setChecking] = useState(true);
+    const [page, setPage] = useState(pageFromHash);
+    const [range, setRange] = useState('short_term');
+    const [history, setHistory] = useState(undefined); // undefined = loading, null = no export found
 
     useEffect(() => { // Use a saved token, or finish the login Spotify just redirected back from
-        getToken().then((_token) => _token && setToken(_token)).catch(console.error);
+        getToken().then((t) => t && setToken(t)).catch(console.error).finally(() => setChecking(false));
     }, []);
 
     useEffect(() => {
-        const handleError = (error) => { // Expired token: forget it and show the login screen again
-            if (error.status === 401) {
-                logout();
-                setToken(null);
-            } else {
-                console.error(error);
-            }
-        };
+        const onHash = () => setPage(pageFromHash());
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+    }, []);
 
-        if (token) {
-            if (!streamingData.length) {
-                Promise.all([ //promise.all is used to fetch multiple JSON files from the local directory
-                    fetch('/Spotify Account Data/StreamingHistory_music_0.json').then(res => res.json()),
-                    fetch('/Spotify Account Data/StreamingHistory_music_1.json').then(res => res.json()),
-                    fetch('/Spotify Account Data/StreamingHistory_music_2.json').then(res => res.json()),
-                ])
-                    .then(([history0, history1, history2]) => {
-                        const allSongs = [...history0, ...history1, ...history2]; // Combine the three arrays
+    useEffect(() => {
+        if (!token) return;
+        loadStreamingHistory().then((songs) => setHistory(computeInsights(songs))).catch(() => setHistory(null));
+    }, [token]);
 
-                        setStreamingData(allSongs);
+    useEffect(() => { // Each page gets its own tab title, and keyboard users land at the top of the new page
+        document.title = `${PAGES.find(([id]) => id === page)[1]} · Wavelength`;
+        window.scrollTo(0, 0);
+    }, [page]);
 
-                        const totalMs = allSongs.reduce((sum, entry) => sum + entry.msPlayed, 0);
-                        setTotalMinutesListened(Math.floor(totalMs / 60000));
+    const onExpired = useCallback(() => { // Expired token: forget it and show the login screen again
+        logout();
+        setToken(null);
+    }, []);
 
-                        const songCount = allSongs.length;
-                        const totalMinutes = Math.floor(totalMs / 60000);
-                        const averageMinutesPerSong = totalMinutes / songCount;
+    if (checking) return null;
+    if (!token) return <Login />;
 
-                        const dayTotals = {};
-                        allSongs.forEach(({ endTime, msPlayed }) => { // Calculate the total minutes played for each day
-                            const date = new Date(endTime.split(" ")[0]);
-                            const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
-
-                            dayTotals[dayOfWeek] = (dayTotals[dayOfWeek] || 0) + msPlayed;
-                        });
-
-                        const minutesEachDay = Object.keys(dayTotals).map((day) => ({ // Create an array of objects with day and total minutes
-                            day,
-                            totalMinutes: Math.floor(dayTotals[day] / 60000),
-                        }));
-
-                        const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-                        const sortedMintesEachDay = minutesEachDay.sort( // Sort the array based on the order of days
-                            (a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day)
-                        )
-
-                        const monthTotals = {};
-
-                        allSongs.forEach(({ endTime, msPlayed }) => { // Calculate the total minutes played for each month
-                            const date = new Date(endTime.split(" ")[0]);
-                            const month = date.toLocaleDateString('en-US', { month: 'long' });
-
-                            monthTotals[month] = (monthTotals[month] || 0) + msPlayed;
-                        })
-
-                        const minutesEachMonth = Object.keys(monthTotals).map((month) => ({ // Create an array of objects with month and total minutes
-                            month,
-                            totalMinutes: Math.floor(monthTotals[month] / 60000),
-                        }))
-
-                        const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
-                                            'August', 'September', 'October', 'November', 'December']
-
-                        const sortedMinutesEachMonth = minutesEachMonth.sort( // Sort the array based on the order of months
-                            (a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month)
-                        );
-
-                        const uniqueArtistsSet = new Set();
-                        allSongs.forEach(({ artistName }) => { // Create a set of unique artists
-                            if (artistName) {
-                                uniqueArtistsSet.add(artistName);
-                            }
-                        });
-
-                        const numUniqueArtists = Array.from(uniqueArtistsSet).length // Get the total number of unique artists
-
-                        const uniqueTracksSet = new Set();
-                        allSongs.forEach(({ trackName }) => { // Create a set of unique tracks
-                            if (trackName) {
-                                uniqueTracksSet.add(trackName);
-                            }
-                        });
-
-                        const numUniqueTracks = Array.from(uniqueTracksSet).length // Get the total number of unique tracks
-
-                        const artistPlayCounts = {};
-                        const songPlayCounts = {};
-
-                        allSongs.forEach(({ artistName, trackName }) => { // Count the number of times each artist and song was played
-                            if (artistName) {
-                                artistPlayCounts[artistName] = (artistPlayCounts[artistName] || 0) + 1;
-                            }
-                            if (trackName) {
-                                songPlayCounts[trackName] = (songPlayCounts[trackName] || 0) + 1;
-                            }
-                        });
-
-                        const topArtist = Object.entries(artistPlayCounts).reduce( // Find the artist with the most plays
-                            (top, [artist, count]) => (count > top.count ? { artist, count } : top),
-                            { artist: null, count: 0 }
-                        );
-
-                        const topArtistSongPlayCounts = {};
-                        allSongs.forEach(({ artistName, trackName }) => { // Count the number of times each song by the top artist was played
-                            if (artistName && trackName) {
-                                if (!topArtistSongPlayCounts[artistName]) {
-                                    topArtistSongPlayCounts[artistName] = {};
-                                }
-                                topArtistSongPlayCounts[artistName][trackName] = (topArtistSongPlayCounts[artistName][trackName] || 0) + 1;
-                            }
-                        });
-
-                        const topArtistSongs = Object.entries(topArtistSongPlayCounts[topArtist.artist] || {}) // Get the songs of the top artist in descending order
-                            .sort((a, b) => b[1] - a[1])
-                            .slice(0, 5)
-                            .map(([name, count]) => ({ name, count }));
-
-                        const topSong = Object.entries(songPlayCounts).reduce( // Find the songs with the most plays
-                            (top, [song, count]) => (count > top.count ? { song, count } : top),
-                            { song: null, count: 0 }
-                        );
-
-                        setInsights((prevInsights) => ({ // Set the insights state with the calculated data
-                            ...prevInsights,
-                            totalMinutes,
-                            averageMinutesPerSong,
-                            songCount,
-                            numUniqueArtists,
-                            numUniqueTracks,
-                            sortedMintesEachDay,
-                            sortedMinutesEachMonth,
-                            topArtist,
-                            topSong,
-                            topArtistSongs,
-                        }));
-
-                        if (topArtist.artist) {
-                            getArtistDetails(token, topArtist.artist) // Fetch artist details from Spotify API
-                                .then((artistDetails) => {
-                                    setInsights((prevInsights) => ({ // Update the insights state with the artist details
-                                        ...prevInsights,
-                                        topArtistDetails: artistDetails,
-                                    }));
-                                })
-                                .catch(handleError);
-                        }
-                    })
-                    .catch(handleError);
-
-            }
-
-            if (activeTab === 'tracks') {
-                getTopTracks(token, timeRange).then(setTracks).catch(handleError); // Fetch top tracks from Spotify API
-            } else if (activeTab === 'artists') {
-                getTopArtists(token, timeRange).then(setArtists).catch(handleError); // Fetch top artists from Spotify API
-            } else if (activeTab === 'genres') {
-                getTopGenres(token, timeRange).then(setGenres).catch(handleError); // Fetch top genres from Spotify API
-            } else if (activeTab === 'recentlyPlayed') {
-                getRecentPlays(token).then(setRecentlyPlayed).catch(handleError); // Fetch recently played tracks from Spotify API
-            } else if (activeTab === 'dashboard') {
-                Promise.all([ // Fetch top tracks, artists, genres, and recently played tracks for the dashboard
-                    getTopTracks(token, 'short_term'),
-                    getTopArtists(token, 'short_term'),
-                    getTopGenres(token, 'short_term'),
-                    getRecentPlays(token),
-                ])
-                    .then(([topTracks, topArtists, topGenres, recentPlays]) => {
-                        setDashboardData({ // Set the dashboard data with the fetched data
-                            topTracks: topTracks.slice(0, 5),
-                            topArtists: topArtists.slice(0, 5),
-                            topGenres: topGenres.slice(0, 10),
-                            recentPlays: recentPlays.slice(0, 5),
-                        });
-                    })
-                    .catch(handleError);
-            }
-        }
-    }, [token, activeTab, timeRange, streamingData]);
-
+    const Page = PAGES.find(([id]) => id === page)[2];
     return (
         <div className="app">
-            {token ? (
-                <>
-                    <div className="tabs">
-                        <button onClick={() => setActiveTab('dashboard')} className={activeTab === 'dashboard' ? 'active' : ''}>
-                            Dashboard
-                        </button>
-                        <button onClick={() => setActiveTab('tracks')} className={activeTab === 'tracks' ? 'active' : ''}>
-                            Top Tracks
-                        </button>
-                        <button onClick={() => setActiveTab('artists')} className={activeTab === 'artists' ? 'active' : ''}>
-                            Top Artists
-                        </button>
-                        <button onClick={() => setActiveTab('genres')} className={activeTab === 'genres' ? 'active' : ''}>
-                            Top Genres
-                        </button>
-                        <button onClick={() => setActiveTab('recentlyPlayed')} className={activeTab === 'recentlyPlayed' ? 'active' : ''}>
-                            Recently Played
-                        </button>
-                        <button onClick={() => setActiveTab('insights')} className={activeTab === 'insights' ? 'active' : ''}>
-                            Insights
-                        </button>
-                    </div>
-                    {activeTab !== 'dashboard' && activeTab !== 'insights' && activeTab !== 'recentlyPlayed' && (
-                        <div className="time-range">
-                            <button onClick={() => setTimeRange('short_term')} className={timeRange === 'short_term' ? 'active' : ''}>
-                                Last 4 Weeks
-                            </button>
-                            <button onClick={() => setTimeRange('medium_term')} className={timeRange === 'medium_term' ? 'active' : ''}>
-                                Last 6 Months
-                            </button>
-                            <button onClick={() => setTimeRange('long_term')} className={timeRange === 'long_term' ? 'active' : ''}>
-                                All Time
-                            </button>
-                        </div>
-                    )}
-                    {activeTab === 'dashboard' && <Dashboard data={dashboardData} totalMinutesListened={totalMinutesListened} />}
-                    {activeTab === 'tracks' && <TopTracks tracks={tracks} />}
-                    {activeTab === 'artists' && <TopArtists artists={artists} />}
-                    {activeTab === 'genres' && <TopGenres genres={genres} />}
-                    {activeTab === 'recentlyPlayed' && <RecentlyPlayed tracks={recentlyPlayed} />}
-                    {activeTab === 'insights' && <Insights insights={insights} />}
-                </>
-            ) : (
-                <Login />
-            )}
+            <Sidebar pages={PAGES} active={page} onLogout={onExpired} />
+            <main className="main" id="main">
+                <Page token={token} range={range} setRange={setRange} history={history} onExpired={onExpired} />
+            </main>
         </div>
     );
 }

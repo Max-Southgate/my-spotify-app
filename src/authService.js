@@ -1,7 +1,7 @@
 // Authorization Code with PKCE: https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow
 const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
 const redirectUri = process.env.REACT_APP_REDIRECT_URI;
-const scope = 'user-top-read playlist-read-private playlist-read-collaborative user-read-private user-read-email user-read-recently-played';
+const scope = 'user-top-read user-read-recently-played playlist-modify-private';
 
 const base64url = (bytes) =>
     btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -22,7 +22,14 @@ export const redirectToLogin = async () => {
 };
 
 // Returns a saved token, or trades the ?code= Spotify sent back for one. null = not logged in.
-export const getToken = async () => {
+// Shared promise: React StrictMode runs effects twice, and a login code can only be traded once.
+let pending = null;
+export const getToken = () => {
+    if (!pending) pending = readToken().catch((error) => { pending = null; throw error; });
+    return pending;
+};
+
+const readToken = async () => {
     const saved = sessionStorage.getItem('token');
     if (saved) return saved;
 
@@ -48,4 +55,7 @@ export const getToken = async () => {
     return access_token;
 };
 
-export const logout = () => sessionStorage.removeItem('token');
+export const logout = () => {
+    sessionStorage.removeItem('token');
+    pending = null;
+};

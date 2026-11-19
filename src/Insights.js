@@ -1,156 +1,75 @@
 import React from 'react';
-import { Chart as ChartJS } from "chart.js/auto"; //this is required for Chart.js to work with React
-import { Bar } from "react-chartjs-2";
+import { findArtist } from './spotifyApi';
+import { DAYS, DAY_NAMES, formatRange } from './stats';
+import { useLoad, PageHead, Cd, Meter, MonthBars } from './ui';
 
-function Insights({ insights }) {
-    const { 
-        totalMinutes, 
-        averageMinutesPerSong, 
-        songCount, 
-        numUniqueArtists, 
-        numUniqueTracks, 
-        sortedMintesEachDay, 
-        sortedMinutesEachMonth, 
-        topArtist, 
-        topSong, 
-        topArtistSongs,
-        topArtistDetails,
-    } = insights;
-
-    if (!topArtist) return <p className="insights">Loading insights…</p>; // streaming history still loading
-
-    const minutesEachDayChartData = { // Data for the daily listening minutes chart
-        labels: sortedMintesEachDay.map(({ day }) => day),
-        datasets: [
-            {
-                label: 'Listening Minutes Per Day',
-                data: sortedMintesEachDay.map(({ totalMinutes }) => totalMinutes),
-                backgroundColor: 'rgb(29, 185, 84)',
-                borderColor: 'rgb(0, 0, 0)',
-                borderWidth: 1.5,
-            },
-        ],
-    };
-
-    const minutesEachMonthChartData = { // Data for the monthly listening minutes chart
-        labels: sortedMinutesEachMonth.map(({ month }) => month),
-        datasets: [
-            {
-                label: 'Listening Minutes Per Month',
-                data: sortedMinutesEachMonth.map(({ totalMinutes }) => totalMinutes),
-                backgroundColor: 'rgb(29, 185, 84)',
-                borderColor: 'rgb(0, 0, 0)',
-                borderWidth: 1.5,
-            },
-        ],
-    };
-
-    const chartOptions = { // Options for the chart displays
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'top',
-                labels: {
-                    color: 'rgb(238, 231, 231)',
-                }
-            },
-        },
-        scales: { // Customizing the x and y axes
-            x: {
-                ticks: {
-                    color: 'rgb(238, 231, 231)',
-                },
-            },
-            y: {
-                ticks: {
-                    color: 'rgb(238, 231, 231)',
-                },
-            },
-        },
-    };
-
-    const totalArtistMinutes = topArtistSongs.reduce((sum, song) => sum + song.count * averageMinutesPerSong, 0);
-    const artistListeningPercentage = ((totalArtistMinutes / totalMinutes) * 100).toFixed(2); // percentage of total listening time for the top artist
-
-    const totalSongMinutes = topSong.count * averageMinutesPerSong;
-    const songListeningPercentage = ((totalSongMinutes / totalMinutes) * 100).toFixed(2); // percentage of total listening time for the top song
-
+function Heatmap({ heat }) {
+    const max = Math.max(1, ...heat.flat());
     return (
-        <div className="insights-container">
-            <div className="insights">
-                <h2>Streaming Insights</h2>
-                <div className="insights-list">
-                    <li>
-                        <span>Total Listening Time:</span> {totalMinutes.toLocaleString()} minutes
-                    </li>
-                    <li>
-                        <span>Average Time per Song:</span> {averageMinutesPerSong.toFixed(2)} minutes
-                    </li>
-                    <li>
-                        <span>Total Songs Played:</span> {songCount}
-                    </li>
-                    <li>
-                        <span>Unique Artists Listened To:</span> {numUniqueArtists}
-                    </li>
-                    <li>
-                        <span>Unique Tracks Listened To:</span> {numUniqueTracks}
-                    </li>
-                </div>
-
-                <h3>Total Listening Time by Day and Month</h3>
-                <div className="insights-charts">
-                    <div className="chart">
-                        <Bar data={minutesEachDayChartData} options={chartOptions} />
-                    </div>
-                    <div className="chart">
-                        <Bar data={minutesEachMonthChartData} options={chartOptions} />
-                    </div>
-                </div>
-
-                <h3>Most played Artist and Song</h3>
-
-                <div className="top-stats-row">
-                    <div className="top-artist-section">
-                        <h3>Most Played Artist</h3>
-                        <p><strong>{topArtist.artist}</strong> with <strong>{topArtist.count}</strong> plays</p>
-                        <p>Total Listening Time: <strong>{Math.floor(totalArtistMinutes)} minutes</strong></p>
-                        <p><strong>{artistListeningPercentage}%</strong> of total listening time</p>
-                        <h4>Top 5 Songs by {topArtist.artist}</h4>
-                        <ol>
-                            {topArtistSongs.map((song, index) => (
-                                <li key={index}>
-                                    {song.name} - {song.count} plays
-                                </li>
-                            ))}
-                        </ol>
-                    </div>
-
-                    {topArtistDetails && ( // missing until the Spotify search returns, or if it fails
-                        <div className="artist-details">
-                            <p><strong>Artist:</strong> {topArtistDetails.name}</p>
-                            <p><strong>Followers:</strong> {topArtistDetails.followers?.total?.toLocaleString()}</p>
-                            <p><strong>Genres:</strong> {topArtistDetails.genres?.join(', ')}</p>
-                            <p><strong>Popularity:</strong> {topArtistDetails.popularity}/100</p>
-                            {topArtistDetails.images?.[0] && (
-                                <img
-                                    src={topArtistDetails.images[0].url}
-                                    alt={`${topArtist.artist} profile`}
-                                    className="artist-image"
-                                />
-                            )}
-                        </div>
-                    )}
-
-                    <div className="top-song-section">
-                        <h3>Most Played Song</h3>
-                        <p><strong>{topSong.song}</strong> with <strong>{topSong.count}</strong> plays</p>
-                        <p>Total Listening Time: <strong>{Math.floor(totalSongMinutes)} minutes</strong></p>
-                        <p><strong>{songListeningPercentage}%</strong> of total listening time</p>
-                    </div>
-
-                </div>
-            </div>
+        <div className="heat" role="img" aria-label="Minutes listened by hour of day and weekday">
+            <span />
+            {Array.from({ length: 24 }, (_, h) => <span className="hr" key={h}>{h % 3 === 0 ? String(h).padStart(2, '0') : ''}</span>)}
+            {heat.map((row, d) => (
+                <React.Fragment key={d}>
+                    <span className="d">{DAYS[d]}</span>
+                    {row.map((min, h) => <i key={h} className="c" style={{ '--v': `${Math.round((min / max) * 100)}%` }} title={`${DAYS[d]} ${String(h).padStart(2, '0')}:00 · ${min.toLocaleString()} min`} />)}
+                </React.Fragment>
+            ))}
         </div>
+    );
+}
+
+function TopArtistCard({ token, artist, onExpired }) {
+    const found = useLoad(() => findArtist(token, artist.name), [token, artist.name], onExpired);
+    return (
+        <section className="tile" aria-label="Most played artist">
+            <p className="label">Most played artist</p>
+            <div className="media"><Cd images={found.data?.images} size={60} spin /><div><b className="title-lg">{artist.name}</b><div className="muted small">{artist.plays.toLocaleString()} plays · {artist.minutes.toLocaleString()} min</div></div></div>
+            <div><Meter value={artist.share} label={`${(artist.share * 100).toFixed(1)}% of your listening`} /> <b>{(artist.share * 100).toFixed(1)}%</b> <span className="muted small">of your listening</span></div>
+            <ol className="song-list">{artist.songs.map((s) => <li key={s.name}>{s.name} <span className="muted">· {s.count}</span></li>)}</ol>
+        </section>
+    );
+}
+
+function Insights({ token, history, onExpired }) {
+    if (history === undefined) return <><PageHead title="Insights" /><p className="status">Reading your data export…</p></>;
+    if (!history) return (
+        <>
+            <PageHead title="Insights" />
+            <section className="tile empty-state">
+                <h2>Add your Spotify data export</h2>
+                <ol>
+                    <li>On spotify.com, open Account → Privacy settings and request <b>Account data</b>. Spotify emails it within a few days.</li>
+                    <li>Unzip it and copy the <code>StreamingHistory_music_*.json</code> files into <code>public/Spotify Account Data/</code> in this project.</li>
+                    <li>Refresh this page. The files stay on your computer; git ignores that folder.</li>
+                </ol>
+            </section>
+        </>
+    );
+
+    const { peak } = history;
+    return (
+        <>
+            <PageHead title="Insights"><span className="pill">From your data export · {formatRange(history.from, history.to)}</span></PageHead>
+            <div className="kpis">
+                <section className="tile"><p className="label">Minutes</p><span className="big">{history.totalMinutes.toLocaleString()}</span><span className="muted small">about {Math.round(history.totalMinutes / 1440)} days</span></section>
+                <section className="tile"><p className="label">Plays</p><span className="big">{history.plays.toLocaleString()}</span><span className="muted small">of 30 seconds or more</span></section>
+                <section className="tile"><p className="label">Artists</p><span className="big">{history.uniqueArtists.toLocaleString()}</span><span className="muted small">different artists</span></section>
+                <section className="tile"><p className="label">Tracks</p><span className="big">{history.uniqueTracks.toLocaleString()}</span><span className="muted small">different tracks</span></section>
+            </div>
+            <section className="tile" aria-label="Minutes per month"><p className="label">Minutes per month</p><MonthBars months={history.months} /></section>
+            <div className="bento">
+                <section className="tile span2" aria-label="When you listen">
+                    <div className="topbar">
+                        <p className="label">When you listen · hour × weekday</p>
+                        <div className="legend" aria-hidden="true">Less {[5, 30, 55, 80, 100].map((v) => <i key={v} style={{ '--v': `${v}%` }} />)} More</div>
+                    </div>
+                    <Heatmap heat={history.heat} />
+                    <span className="muted small">Peak: {DAY_NAMES[peak.day]}s around {String(peak.hour).padStart(2, '0')}:00. Times are in your computer's time zone.</span>
+                </section>
+                <TopArtistCard token={token} artist={history.topArtist} onExpired={onExpired} />
+            </div>
+        </>
     );
 }
 
