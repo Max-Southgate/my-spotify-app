@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wavelength Design Language v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a dark studio rack. Solid ink panels, one amber accent, and a green → amber → red level scale that meters and the navigation share. Part one is what the app can do today; part two is what comes next. */
+  --bg: #0b0c12;
+  --surface: #141621;
+  --surface-2: #1d2030;
+  --line: #2b2f45;
+  --text: #eef0f7;
+  --muted: #a3a9c4;
+  --signal: #ffb547;
+  --level: #4fd68f;
+  --peak: #ff5f6d;
+  --on-signal: #1a1205;
+  --ramp: linear-gradient(90deg, var(--level), var(--signal), var(--peak));
+  --font: "Figtree", "Helvetica Neue", Arial, sans-serif;
+  --win-font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --radius: 14px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.num, .big { font-variant-numeric: tabular-nums; }
+
+.page { max-width: 1200px; margin: 0 auto; padding: 56px 20px 96px; display: grid; gap: 80px; }
+.eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--signal); margin: 0 0 10px; }
+h1, h2 { margin: 0; text-wrap: balance; letter-spacing: -.02em; }
+h1 { font-size: clamp(34px, 6vw, 62px); font-weight: 900; line-height: 1.03; }
+h2 { font-size: clamp(24px, 3vw, 32px); font-weight: 800; }
+.ramp-text { background: var(--ramp); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lede { color: var(--muted); max-width: 65ch; margin: 14px 0 0; font-size: 17px; }
+.toc { display: grid; gap: 10px; margin-top: 28px; }
+.toc div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toc b { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); width: 54px; }
+.toc a { font-size: 13px; font-weight: 600; text-decoration: none; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; }
+.toc a:hover { color: var(--text); border-color: var(--signal); }
+section { display: grid; gap: 22px; scroll-margin-top: 24px; }
+.part { border-top: 1px solid var(--line); padding-top: 40px; display: grid; gap: 10px; }
+.part h2 { font-size: clamp(28px, 4vw, 40px); }
+
+/* Shared pieces */
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.big { font-size: 46px; font-weight: 900; line-height: 1; letter-spacing: -.03em; }
+.muted { color: var(--muted); }
+.art { aspect-ratio: 1; border-radius: 8px; flex-shrink: 0; background: linear-gradient(135deg, hsl(var(--h) 72% 58%), hsl(calc(var(--h) + 70) 55% 24%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cta { display: inline-flex; align-items: center; gap: 10px; background: var(--signal); color: var(--on-signal); font: 800 16px var(--font); padding: 14px 26px; border-radius: 999px; min-height: 48px; text-decoration: none; border: 0; cursor: pointer; }
+.btn-ghost { display: inline-flex; align-items: center; gap: 8px; font: 700 14px var(--font); color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; min-height: 44px; cursor: pointer; }
+.switch { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px; font-size: 13px; font-weight: 700; }
+.switch span { padding: 8px 14px; border-radius: 999px; color: var(--muted); }
+.switch .on { background: var(--signal); color: var(--on-signal); }
+.future-tag { font-size: 12px; font-weight: 800; padding: 5px 12px; border-radius: 999px; background: rgba(255,181,71,.14); color: var(--signal); border: 1px solid rgba(255,181,71,.35); }
+
+.wave { display: flex; align-items: center; gap: 3px; height: 90px; width: 100%; }
+.wave i { flex: 1; min-width: 2px; height: var(--h); border-radius: 2px; background: var(--signal); }
+.meter { display: inline-flex; gap: 2px; vertical-align: middle; }
+.meter i { width: 6px; height: 14px; border-radius: 1px; background: var(--line); }
+.meter i.on { background: var(--level); } .meter i.on.hot { background: var(--signal); } .meter i.on.clip { background: var(--peak); }
+
+.cd { position: relative; border-radius: 50%; aspect-ratio: 1; flex-shrink: 0;
+  background:
+    radial-gradient(circle, var(--bg) 0 6%, transparent 6.5%),
+    radial-gradient(circle, rgba(255,255,255,.4) 0 16%, rgba(255,255,255,.12) 16.5% 18%, transparent 18.5%),
+    conic-gradient(from 40deg, rgba(255,255,255,.34), rgba(255,255,255,0) 14%, rgba(255,255,255,.2) 28%, rgba(255,255,255,0) 46%, rgba(255,255,255,.28) 62%, rgba(255,255,255,0) 80%, rgba(255,255,255,.34)),
+    linear-gradient(135deg, hsl(var(--h) 72% 58%), hsl(calc(var(--h) + 70) 55% 28%));
+  box-shadow: 0 0 0 1px rgba(255,255,255,.2), 0 12px 30px rgba(0,0,0,.45); }
+.cd.blank { background: radial-gradient(circle, var(--bg) 0 6%, transparent 6.5%), radial-gradient(circle, rgba(255,255,255,.45) 0 16%, transparent 16.5%),
+    conic-gradient(from 0deg, #d9deea, #c6f0d8, #ffe2b0, #ffc0c6, #d9deea); }
+.spin { animation: spin 6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.case { position: relative; aspect-ratio: 1; border-radius: 4px; background: linear-gradient(135deg, hsl(var(--h) 72% 58%), hsl(calc(var(--h) + 70) 55% 24%)); box-shadow: 0 14px 30px rgba(0,0,0,.45); }
+.case::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 8%; background: rgba(255,255,255,.2); border-right: 1px solid rgba(255,255,255,.3); border-radius: 4px 0 0 4px; }
+.case::after { content: ""; position: absolute; inset: 0; border-radius: 4px; background: linear-gradient(115deg, rgba(255,255,255,.28), transparent 38%, transparent 70%, rgba(255,255,255,.1)); border: 1px solid rgba(255,255,255,.25); }
+.stack { position: relative; flex-shrink: 0; }
+.stack .case { position: absolute; left: 0; top: 0; z-index: 1; }
+.stack .cd { position: absolute; top: 4%; }
+.cassette { position: relative; width: 100%; max-width: 360px; aspect-ratio: 1.6; border-radius: 16px; padding: 6% 6% 0; background: var(--surface-2); border: 1px solid var(--line); }
+.cassette .lbl { background: var(--ramp); border-radius: 10px; height: 64%; padding: 10px 14px; color: #14100a; }
+.cassette .lbl b { display: block; font-size: 17px; font-weight: 900; line-height: 1.15; }
+.cassette .lbl small { font-size: 12px; font-weight: 700; opacity: .8; }
+.cassette .window { position: absolute; left: 22%; right: 22%; top: 42%; height: 22%; background: var(--bg); border-radius: 999px; display: flex; justify-content: space-between; align-items: center; padding: 0 5%; }
+.reel { height: 78%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #e8eaf5; background: repeating-conic-gradient(#e8eaf5 0 18deg, #2a2d45 18deg 60deg); animation: spin 3.5s linear infinite; }
+.cassette .foot { position: absolute; bottom: 0; left: 20%; right: 20%; height: 18%; background: rgba(255,255,255,.06); clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%); border-top: 1px solid var(--line); }
+
+.eq { display: flex; align-items: flex-end; gap: 12px; height: 240px; }
+.eq .bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; min-width: 0; }
+.eq .col { width: 100%; height: var(--v); border-radius: 2px; background: linear-gradient(to top, var(--level), var(--level) 55%, var(--signal) 78%, var(--peak)); background-size: 100% 180px; background-position: bottom;
+  -webkit-mask: repeating-linear-gradient(to top, #000 0 8px, transparent 8px 11px); mask: repeating-linear-gradient(to top, #000 0 8px, transparent 8px 11px); }
+.eq .n { font-size: 13px; font-weight: 800; }
+.eq .name { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.25; min-height: 30px; }
+.eq.mini { height: 130px; gap: 6px; }
+.eq.mini .col { background-size: 100% 90px; -webkit-mask: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 7px); mask: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 7px); }
+.eq.mini .name { font-size: 10px; min-height: 26px; }
+
+.months { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; background: linear-gradient(var(--line), var(--line)) 0 70px / 100% 1px no-repeat; }
+.months .m { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.months .slot { width: 100%; max-width: 34px; height: 140px; display: flex; align-items: center; }
+.months .slot i { display: block; width: 100%; height: var(--h); border-radius: 4px; background: linear-gradient(180deg, var(--signal), #ff8a4c 50%, var(--signal)); }
+.months .m.max .slot i { background: linear-gradient(180deg, var(--peak), var(--signal) 50%, var(--peak)); }
+.months .lab { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.months .val { font-size: 12px; font-weight: 700; }
+.months.compact { background-position: 0 32px; }
+.months.compact .slot { height: 64px; }
+
+.heat { display: grid; grid-template-columns: 38px repeat(24, 1fr); gap: 3px; align-items: center; }
+.heat .c { aspect-ratio: 1; border-radius: 3px; background: color-mix(in oklab, var(--signal) var(--v), var(--surface-2)); }
+.heat .d, .heat .hr { font-size: 11px; color: var(--muted); }
+.heat .hr { text-align: center; }
+.legend { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.legend i { width: 14px; height: 14px; border-radius: 3px; background: color-mix(in oklab, var(--signal) var(--v), var(--surface-2)); }
+
+.feat { display: grid; grid-template-columns: repeat(3, 56px); gap: 10px; align-items: center; }
+.feat > span { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.feat > span i { display: block; height: 100%; border-radius: 999px; }
+.hbar { display: grid; grid-template-columns: 130px 1fr 44px; gap: 12px; align-items: center; font-size: 14px; }
+.hbar span:nth-child(2) { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.hbar span:nth-child(2) i { display: block; height: 100%; background: var(--signal); border-radius: 999px; }
+
+/* Windows browser window (Edge-style) */
+.scroll { overflow-x: auto; padding-bottom: 6px; }
+.win { border: 1px solid #3a3e55; border-radius: 8px; overflow: hidden; background: var(--bg); box-shadow: 0 24px 60px rgba(0,0,0,.5); min-width: 1080px; font-family: var(--font); }
+.titlebar { display: flex; align-items: flex-end; height: 40px; background: #1b1d29; padding-left: 8px; gap: 4px; font-family: var(--win-font); }
+.wtab { display: flex; align-items: center; gap: 8px; height: 32px; width: 240px; padding: 0 8px 0 12px; background: #262938; border-radius: 8px 8px 0 0; font-size: 12px; color: var(--text); }
+.wtab .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wtab .x, .newtab { color: var(--muted); display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; }
+.newtab { align-self: center; margin-left: 2px; }
+.winctl { margin-left: auto; display: flex; align-self: stretch; }
+.winctl span { width: 46px; display: grid; place-items: center; color: var(--text); }
+.winctl span:last-child:hover { background: #c42b1c; }
+.toolbar { display: flex; align-items: center; gap: 4px; height: 42px; padding: 0 8px; background: #262938; border-bottom: 1px solid var(--line); font-family: var(--win-font); }
+.toolbar .ib { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); border-radius: 4px; }
+.addr { flex: 1; display: flex; align-items: center; gap: 8px; height: 30px; margin: 0 8px; padding: 0 12px; border-radius: 999px; background: #161824; color: var(--text); font-size: 13px; }
+.addr .host { color: var(--muted); }
+.profile { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--line); display: grid; place-items: center; font-size: 11px; font-weight: 700; margin: 0 4px; }
+
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: 640px; }
+.side { border-right: 1px solid var(--line); padding: 22px 14px; display: flex; flex-direction: column; gap: 2px; background: linear-gradient(180deg, #11131c, var(--bg)); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; letter-spacing: -.02em; padding: 0 8px 20px; }
+.nav-item { display: flex; gap: 12px; align-items: center; padding: 10px 12px; color: var(--muted); font-weight: 600; font-size: 15px; min-height: 44px; }
+.nav-item.on { color: var(--text); font-weight: 800; }
+.who { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px; border-top: 1px solid var(--line); font-size: 13px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); font-size: 12px; font-weight: 800; }
+.main { padding: 26px 30px 34px; display: grid; gap: 18px; align-content: start; min-width: 0; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.topbar h3 { font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -.02em; }
+.bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.span2 { grid-column: span 2; } .span3 { grid-column: 1 / -1; }
+
+.row { display: grid; grid-template-columns: 32px 44px minmax(0, 1.3fr) minmax(0, 1fr) 52px 52px 64px 24px; align-items: center; gap: 14px; padding: 8px 10px; border-radius: 10px; }
+.row:hover { background: var(--surface-2); }
+.row .rank { font-size: 15px; font-weight: 800; color: var(--muted); text-align: right; }
+.row .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .a { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .ext { color: var(--muted); display: grid; place-items: center; }
+.row.head { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-bottom: 4px; }
+.row.head:hover { background: none; }
+.row.simple { grid-template-columns: 44px minmax(0, 1fr) auto; }
+.row.rec { grid-template-columns: 44px minmax(0, 1fr) auto auto; }
+.move { font-size: 12px; font-weight: 800; }
+.move.up { color: var(--level); } .move.down { color: var(--peak); } .move.new { color: var(--signal); } .move.same { color: var(--muted); }
+
+.hero-track { display: grid; grid-template-columns: auto 132px 1fr auto; gap: 24px; align-items: center; background: linear-gradient(100deg, rgba(255,181,71,.12), transparent 60%), var(--surface); }
+.hero-track .n1 { font-size: 72px; font-weight: 900; line-height: 1; letter-spacing: -.04em; color: var(--signal); }
+.hero-track h4 { font-size: 30px; font-weight: 900; margin: 4px 0; letter-spacing: -.02em; }
+.artist-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.artist-card { display: grid; gap: 10px; padding: 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
+.artist-card .rank { font-size: 13px; font-weight: 800; color: var(--signal); }
+
+.login { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 40px; min-height: 560px; padding: 56px 64px; background: radial-gradient(60% 80% at 80% 40%, rgba(255,181,71,.14), transparent 70%), var(--bg); }
+.login h4 { font-size: 54px; font-weight: 900; line-height: 1.02; margin: 0 0 16px; letter-spacing: -.03em; text-wrap: balance; }
+.login p { color: var(--muted); font-size: 19px; max-width: 42ch; margin: 0 0 28px; }
+.login small { display: block; margin-top: 18px; color: var(--muted); font-size: 14px; }
+
+.drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 28px; display: grid; gap: 12px; justify-items: center; text-align: center; background: rgba(255,181,71,.04); }
+.canvas-box { position: relative; width: 100%; }
+select, input[type="text"] { font: 600 14px var(--font); color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 40px; }
+.axis { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
+.axis label { display: flex; gap: 8px; align-items: center; }
+.slider { display: grid; gap: 4px; }
+.slider div { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; }
+.slider input { width: 100%; accent-color: var(--signal); }
+.gen { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 28px; align-items: start; }
+.gen-out { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
+
+.roadmap { display: grid; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.roadmap > div { display: grid; grid-template-columns: 1.1fr 1.8fr 70px 1fr; gap: 18px; padding: 14px 20px; border-top: 1px solid var(--line); align-items: center; }
+.roadmap > div:first-child { border-top: 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.roadmap p { margin: 0; font-size: 14px; color: var(--muted); }
+.roadmap b { font-size: 15px; }
+.size { font-weight: 900; font-size: 15px; }
+@media (max-width: 860px) { .roadmap > div { grid-template-columns: 1fr; gap: 6px; } }
+@media (prefers-reduced-motion: reduce) { .spin, .reel { animation: none; } }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header>
+    <p class="eyebrow">Design language · v3</p>
+    <h1>Wavelength: <span class="ramp-text">today, then next</span></h1>
+    <p class="lede">Part one shows only what this app can build right now with Spotify's current API and your data export. Part two shows features that are realistic to add next, and what each one needs. Windows are drawn as Microsoft Edge on Windows 11.</p>
+    <nav class="toc" aria-label="Sections">
+      <div><b>Today</b><a href="#foundations">01 Foundations</a><a href="#login">02 Log in</a><a href="#overview">03 Overview</a><a href="#tracks">04 Top tracks</a><a href="#artists">05 Top artists</a><a href="#genres">06 Genres</a><a href="#insights">07 Insights</a></div>
+      <div><b>Next</b><a href="#history">08 Your full history</a><a href="#dna">09 Song DNA</a><a href="#discover">10 Discover</a><a href="#roadmap">11 What each needs</a></div>
+    </nav>
+    <div class="wave" data-wave="11" data-n="120" style="margin-top:36px" aria-hidden="true"></div>
+  </header>
+
+  <div class="part"><p class="eyebrow">Part one</p><h2>Buildable today</h2><p class="lede" style="margin-top:4px">Everything here uses Spotify endpoints and fields that still work for development-mode apps in November 2026, plus the streaming-history files from your data export.</p></div>
+
+  <section id="foundations" aria-labelledby="h-found">
+    <div><p class="eyebrow">01</p><h2 id="h-found">Foundations</h2>
+      <p class="lede">One ink surface and one amber accent. The green → amber → red level scale is kept for meters and for the active navigation icon, so the menu reads like a level meter running down the side.</p></div>
+    <div class="bento" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))" data-swatches></div>
+    <div class="bento">
+      <div class="tile"><p class="label">Typeface · Figtree</p><span style="font-size:40px;font-weight:900;letter-spacing:-.03em;line-height:1.05">Top tracks</span><span style="font-size:17px">Most of your listening happens on weekday evenings.</span><span class="muted" style="font-size:14px">The closest free match to Spotify's own typeface.</span></div>
+      <div class="tile"><p class="label">Navigation</p><div data-navdemo></div><span class="muted" style="font-size:14px">No side bar. The active icon takes its colour from its place on the scale.</span></div>
+      <div class="tile"><p class="label">Objects</p><div style="display:flex;gap:18px;align-items:center"><div class="cd blank spin" style="width:84px" aria-hidden="true"></div><div class="case" style="--h:200;width:78px" aria-hidden="true"></div><span class="meter" data-meter="0.8" data-n="12"></span></div><span class="muted" style="font-size:14px">CDs for artists, jewel cases for albums, meters for shares and scores.</span></div>
+    </div>
+  </section>
+
+  <section id="login" aria-labelledby="h-login">
+    <div><p class="eyebrow">02</p><h2 id="h-login">Log in</h2></div>
+    <div class="scroll"><div class="win" data-win="Wavelength" data-url="127.0.0.1:3000/">
+      <div class="login">
+        <div>
+          <p class="eyebrow">Wavelength</p>
+          <h4>See how you <span class="ramp-text">really</span> listen.</h4>
+          <p>Your top tracks, artists and genres, and when and how much you listen, from your Spotify account.</p>
+          <a class="cta" href="#login"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"/></svg>Connect with Spotify</a>
+          <small>Read-only access. The app never posts, follows or changes anything.</small>
+        </div>
+        <div class="stack" style="width:420px;height:340px" aria-hidden="true"><div class="case" style="--h:20;width:320px"></div><div class="cd spin" style="--h:20;width:290px;left:120px"></div></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section id="overview" aria-labelledby="h-over">
+    <div><p class="eyebrow">03</p><h2 id="h-over">Overview</h2>
+      <p class="lede">Replaces the dashboard and the Recently played tab. Spotify no longer gives apps like this a song's popularity, so "On repeat" shows how far the song has climbed. That comes from comparing your 4-week and 6-month top lists.</p></div>
+    <div class="scroll"><div class="win" data-win="Overview · Wavelength" data-url="127.0.0.1:3000/#overview">
+      <div class="app"><aside class="side" data-nav="now" data-active="0"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Overview</h3><div class="switch"><span class="on">4 weeks</span><span>6 months</span><span>All time</span></div></div>
+          <div class="bento">
+            <div class="tile span2"><p class="label">Minutes listened · Dec '23 – Nov '24</p>
+              <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span class="big">48,213</span><span class="muted">minutes · about 33 days</span></div>
+              <div class="months compact" data-months></div></div>
+            <div class="tile"><p class="label">On repeat · #1</p>
+              <div style="display:flex;gap:14px;align-items:center"><div class="art" style="--h:20;width:86px"></div><div style="min-width:0"><b style="font-size:19px">Glass Hours</b><div class="muted">Mira Vale</div><div class="muted" style="font-size:13px">Low Season · 2024</div></div></div>
+              <div class="chips"><span class="pill"><span class="move up">▲ 3</span> vs 6 months</span><span class="pill">3:28</span></div>
+              <a href="#overview" style="font-size:13px;font-weight:700;color:var(--signal)">Open in Spotify ↗</a>
+            </div>
+            <div class="tile span2"><p class="label">Top artists · last 4 weeks</p><div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px" data-artists="0-5" data-small></div></div>
+            <div class="tile"><p class="label">Top genres</p><div class="eq mini" data-genres="6"></div></div>
+            <div class="tile span3"><p class="label">Recently played</p><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px" data-recent="6"></div></div>
+          </div>
+        </div></div>
+    </div></div>
+  </section>
+
+  <section id="tracks" aria-labelledby="h-tracks">
+    <div><p class="eyebrow">04</p><h2 id="h-tracks">Top tracks</h2>
+      <p class="lede">The list reads like the back of an album sleeve. Each row shows the release year, the length and how far the track has moved compared with the longer time range. "Save as playlist" writes these ten tracks to a new private playlist in your account.</p></div>
+    <div class="scroll"><div class="win" data-win="Top tracks · Wavelength" data-url="127.0.0.1:3000/#tracks">
+      <div class="app"><aside class="side" data-nav="now" data-active="1"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Top tracks</h3><div style="display:flex;gap:12px;align-items:center"><button class="btn-ghost" type="button">Save as playlist</button><div class="switch"><span class="on">4 weeks</span><span>6 months</span><span>All time</span></div></div></div>
+          <div class="tile hero-track">
+            <span class="n1">01</span><div class="art" style="--h:20;width:132px"></div>
+            <div style="min-width:0"><p class="label">Most played · last 4 weeks</p><h4>Glass Hours</h4><div class="muted">Mira Vale · Low Season</div>
+              <div class="chips" style="margin-top:10px"><span class="pill"><span class="move up">▲ 3</span> vs 6 months</span><span class="pill">2024</span><span class="pill">3:28</span></div></div>
+            <a class="btn-ghost" href="#tracks">Open in Spotify ↗</a>
+          </div>
+          <div class="tile" style="gap:2px">
+            <div class="row head"><span></span><span></span><span>Track</span><span>Album</span><span>Year</span><span>Length</span><span>vs 6 mo</span><span></span></div>
+            <div data-tracks></div>
+          </div>
+        </div></div>
+    </div></div>
+  </section>
+
+  <section id="artists" aria-labelledby="h-artists">
+    <div><p class="eyebrow">05</p><h2 id="h-artists">Top artists</h2>
+      <p class="lede">Each artist is a CD. Follower counts and popularity are gone from the API, so the cards show genres and how many of your top 50 tracks belong to each artist.</p></div>
+    <div class="scroll"><div class="win" data-win="Top artists · Wavelength" data-url="127.0.0.1:3000/#artists">
+      <div class="app"><aside class="side" data-nav="now" data-active="2"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Top artists</h3><div class="switch"><span>4 weeks</span><span>6 months</span><span class="on">All time</span></div></div>
+          <div class="tile" style="flex-direction:row;align-items:center;gap:40px;background:linear-gradient(100deg,transparent 30%,rgba(255,181,71,.10)),var(--surface)">
+            <div class="stack" style="width:330px;height:260px" aria-hidden="true"><div class="case" style="--h:285;width:240px"></div><div class="cd spin" style="--h:285;width:220px;left:100px"></div></div>
+            <div style="display:grid;gap:12px">
+              <p class="label" style="color:var(--signal)">#01 · All time</p>
+              <span style="font-size:44px;font-weight:900;letter-spacing:-.03em;line-height:1">Juno Marsh</span>
+              <div class="chips"><span class="pill">indie pop</span><span class="pill">dream pop</span><span class="pill">art pop</span></div>
+              <span class="muted">4 of your top 50 tracks</span>
+            </div>
+          </div>
+          <div class="artist-grid" data-artists="1-11"></div>
+        </div></div>
+    </div></div>
+  </section>
+
+  <section id="genres" aria-labelledby="h-genres">
+    <div><p class="eyebrow">06</p><h2 id="h-genres">Genres</h2>
+      <p class="lede">A graphic equaliser. Bar height is how many of your top 50 artists carry each genre, the same count the app makes today.</p></div>
+    <div class="scroll"><div class="win" data-win="Genres · Wavelength" data-url="127.0.0.1:3000/#genres">
+      <div class="app"><aside class="side" data-nav="now" data-active="3"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Genres</h3><div class="switch"><span class="on">4 weeks</span><span>6 months</span><span>All time</span></div></div>
+          <div class="tile"><div class="topbar"><p class="label">Artists per genre · from your top 50 artists</p><span class="muted" style="font-size:13px">Top genre: indie pop · 14 artists</span></div><div class="eq" data-genres="10"></div></div>
+        </div></div>
+    </div></div>
+  </section>
+
+  <section id="insights" aria-labelledby="h-ins">
+    <div><p class="eyebrow">07</p><h2 id="h-ins">Insights</h2>
+      <p class="lede">From your Spotify data export. Months are kept apart by year, and the hour × weekday heatmap uses the time already stored in each play.</p></div>
+    <div class="scroll"><div class="win" data-win="Insights · Wavelength" data-url="127.0.0.1:3000/#insights">
+      <div class="app"><aside class="side" data-nav="now" data-active="4"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Insights</h3><span class="pill">From your data export · Dec '23 – Nov '24</span></div>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px">
+            <div class="tile"><p class="label">Minutes</p><span class="big" style="font-size:34px">48,213</span><span class="muted" style="font-size:13px">about 33 days</span></div>
+            <div class="tile"><p class="label">Plays</p><span class="big" style="font-size:34px">21,904</span><span class="muted" style="font-size:13px">2.2 min per play</span></div>
+            <div class="tile"><p class="label">Artists</p><span class="big" style="font-size:34px">1,312</span><span class="muted" style="font-size:13px">different artists</span></div>
+            <div class="tile"><p class="label">Tracks</p><span class="big" style="font-size:34px">4,870</span><span class="muted" style="font-size:13px">different tracks</span></div>
+          </div>
+          <div class="tile"><p class="label">Minutes per month</p><div class="months" data-months data-full></div></div>
+          <div class="bento">
+            <div class="tile span2">
+              <div class="topbar"><p class="label">When you listen · hour × weekday</p><div class="legend">Less <i style="--v:5%"></i><i style="--v:30%"></i><i style="--v:55%"></i><i style="--v:80%"></i><i style="--v:100%"></i> More</div></div>
+              <div class="heat" data-heat></div>
+              <span class="muted" style="font-size:14px">Peak: weekday evenings 18:00–19:00 and Friday nights.</span>
+            </div>
+            <div class="tile"><p class="label">Most played artist</p>
+              <div style="display:flex;gap:14px;align-items:center"><div class="cd spin" style="--h:20;width:76px" aria-hidden="true"></div><div><b style="font-size:19px">Mira Vale</b><div class="muted" style="font-size:13px">1,204 plays · 3,890 min</div></div></div>
+              <div><span class="meter" data-meter="0.081" data-n="20" data-label="8.1% of your listening"></span> <b>8.1%</b> <span class="muted" style="font-size:13px">of your listening</span></div>
+              <ol style="margin:0;padding-left:22px;font-size:14px;display:grid;gap:4px"><li>Glass Hours <span class="muted">· 212</span></li><li>Afterglow Index <span class="muted">· 167</span></li><li>Pale Blue Radio <span class="muted">· 133</span></li><li>Lantern <span class="muted">· 98</span></li><li>Coastline <span class="muted">· 71</span></li></ol>
+            </div>
+          </div>
+        </div></div>
+    </div></div>
+  </section>
+
+  <div class="part"><p class="eyebrow">Part two</p><h2>What comes next</h2><p class="lede" style="margin-top:4px">Realistic additions. Each one is achievable with a public data source that works today, and section 11 lists what each needs. Two new items join the navigation: Song DNA and Discover.</p></div>
+
+  <section id="history" aria-labelledby="h-hist">
+    <div><p class="eyebrow">08 · Next</p><h2 id="h-hist">Your full history</h2>
+      <p class="lede">Instead of keeping export files in the app's public folder, you drop them into the page and they are read in your browser. With Spotify's extended streaming history this goes back to the day you joined, and it adds skips, shuffle and which device you used.</p></div>
+    <div class="scroll"><div class="win" data-win="Insights · Wavelength" data-url="127.0.0.1:3000/#insights">
+      <div class="app"><aside class="side" data-nav="future" data-active="6"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Your full history</h3><span class="future-tag">Next</span></div>
+          <div class="bento">
+            <div class="tile">
+              <div class="drop">
+                <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="var(--signal)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+                <b style="font-size:17px">Drop your Spotify export here</b>
+                <span class="muted" style="font-size:14px">Streaming_History_Audio_*.json files</span>
+                <button class="btn-ghost" type="button">Choose files</button>
+              </div>
+              <span class="muted" style="font-size:13px">Files are read in your browser and never uploaded anywhere.</span>
+              <div class="chips"><span class="pill">2016–2019.json ✓</span><span class="pill">2020–2022.json ✓</span><span class="pill">2023–2026.json ✓</span></div>
+            </div>
+            <div class="tile span2">
+              <p class="label">Since you joined · 2016 – 2026</p>
+              <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span class="big">312,480</span><span class="muted">minutes · about 217 days</span></div>
+              <div class="months" data-years data-full></div>
+            </div>
+            <div class="tile"><p class="label">Skipped</p><span class="big" style="font-size:34px">23%</span><span class="meter" data-meter="0.23" data-n="20" data-label="23% of plays skipped"></span><span class="muted" style="font-size:13px">of plays skipped before the end</span></div>
+            <div class="tile"><p class="label">On shuffle</p><span class="big" style="font-size:34px">61%</span><span class="meter" data-meter="0.61" data-n="20" data-label="61% of plays on shuffle"></span><span class="muted" style="font-size:13px">of plays started on shuffle</span></div>
+            <div class="tile"><p class="label">Where you listen</p>
+              <div class="hbar"><span>Windows PC</span><span><i style="width:41%"></i></span><b>41%</b></div>
+              <div class="hbar"><span>Android phone</span><span><i style="width:38%"></i></span><b>38%</b></div>
+              <div class="hbar"><span>Web player</span><span><i style="width:12%"></i></span><b>12%</b></div>
+              <div class="hbar"><span>Smart speaker</span><span><i style="width:9%"></i></span><b>9%</b></div>
+            </div>
+          </div>
+        </div></div>
+    </div></div>
+  </section>
+
+  <section id="dna" aria-labelledby="h-dna">
+    <div><p class="eyebrow">09 · Next</p><h2 id="h-dna">Song DNA</h2>
+      <p class="lede">What your music is made of. Choose what goes on each axis of the mood map, then click a dot to compare that song with your average. Dot colour shows danceability on the level scale, and hovering shows the genre.</p></div>
+    <div class="scroll"><div class="win" data-win="Song DNA · Wavelength" data-url="127.0.0.1:3000/#dna">
+      <div class="app"><aside class="side" data-nav="future" data-active="4"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Song DNA</h3><div style="display:flex;gap:10px;align-items:center"><span class="pill">Audio features via ReccoBeats</span><span class="future-tag">Next</span></div></div>
+          <div class="bento">
+            <div class="tile span2">
+              <div class="topbar"><p class="label">Mood map · your top 32 tracks</p>
+                <div class="axis"><label for="ax-x">Across <select id="ax-x"></select></label><label for="ax-y">Up <select id="ax-y"></select></label></div></div>
+              <div class="canvas-box" style="height:340px"><canvas id="scatter" role="img" aria-label="Scatter chart of your top tracks by the two chosen audio features"></canvas></div>
+              <div class="legend">Danceability: low <i style="background:var(--level)"></i><i style="background:var(--signal)"></i><i style="background:var(--peak)"></i> high</div>
+            </div>
+            <div class="tile">
+              <p class="label">Selected track</p>
+              <div style="display:flex;gap:12px;align-items:center"><div class="art" id="sel-art" style="--h:20;width:64px"></div><div style="min-width:0"><b id="sel-title" style="font-size:18px">Glass Hours</b><div class="muted" id="sel-artist">Mira Vale</div></div></div>
+              <div class="chips" id="sel-chips"></div>
+              <div class="canvas-box" style="height:250px"><canvas id="radar" role="img" aria-label="Radar chart comparing the selected track with your average"></canvas></div>
+            </div>
+            <div class="tile"><p class="label">Tempo · beats per minute</p><div class="canvas-box" style="height:190px"><canvas id="tempo" role="img" aria-label="Bar chart of how many tracks fall in each tempo range"></canvas></div></div>
+            <div class="tile"><p class="label">Musical key</p><div class="canvas-box" style="height:190px"><canvas id="keys" role="img" aria-label="Polar chart of how many tracks are in each musical key"></canvas></div></div>
+            <div class="tile"><p class="label">Your sound</p><div data-sound></div></div>
+          </div>
+        </div></div>
+    </div></div>
+  </section>
+
+  <section id="discover" aria-labelledby="h-disc">
+    <div><p class="eyebrow">10 · Next</p><h2 id="h-disc">Discover</h2>
+      <p class="lede">Songs, artists and albums seeded from your top tracks, and a playlist generator. Move the sliders and the cassette's tracklist re-sorts to match. Saving creates a real private playlist.</p></div>
+    <div class="scroll"><div class="win" data-win="Discover · Wavelength" data-url="127.0.0.1:3000/#discover">
+      <div class="app"><aside class="side" data-nav="future" data-active="5"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Discover</h3><div style="display:flex;gap:10px;align-items:center"><span class="pill">Recommendations via ReccoBeats</span><span class="future-tag">Next</span></div></div>
+          <div class="tile" style="flex-direction:row;align-items:center;gap:14px;flex-wrap:wrap"><p class="label">Seeds</p><div class="chips" data-seeds></div><button class="btn-ghost" type="button" style="margin-left:auto">Change seeds</button></div>
+          <div class="bento">
+            <div class="tile span2"><p class="label">Songs for you</p><div data-recs></div></div>
+            <div class="tile"><p class="label">Artists to try</p><div style="display:grid;gap:14px" data-recartists></div></div>
+            <div class="tile span3"><p class="label">Albums to try</p><div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:18px" data-albums></div></div>
+            <div class="tile span3">
+              <p class="label">Playlist generator</p>
+              <div class="gen">
+                <div style="display:grid;gap:16px">
+                  <label class="slider" for="g-name"><div><span>Name</span></div><input type="text" id="g-name" value="Late-night drive"></label>
+                  <label class="slider" for="g-energy"><div><span>Energy</span><span id="o-energy">70</span></div><input type="range" id="g-energy" min="0" max="100" value="70"></label>
+                  <label class="slider" for="g-dance"><div><span>Danceability</span><span id="o-dance">60</span></div><input type="range" id="g-dance" min="0" max="100" value="60"></label>
+                  <label class="slider" for="g-mood"><div><span>Mood (sad → happy)</span><span id="o-mood">40</span></div><input type="range" id="g-mood" min="0" max="100" value="40"></label>
+                  <label class="slider" for="g-tempo"><div><span>Tempo around</span><span id="o-tempo">120 BPM</span></div><input type="range" id="g-tempo" min="70" max="180" value="120"></label>
+                </div>
+                <div class="gen-out">
+                  <div style="display:grid;gap:16px;justify-items:start">
+                    <div class="cassette" aria-hidden="true"><div class="lbl"><b id="tape-name">Late-night drive</b><small id="tape-sub">8 tracks</small></div><div class="window"><i class="reel"></i><i class="reel"></i></div><div class="foot"></div></div>
+                    <button class="cta" type="button">Save to Spotify</button>
+                  </div>
+                  <div data-genlist></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+    </div></div>
+  </section>
+
+  <section id="roadmap" aria-labelledby="h-road">
+    <div><p class="eyebrow">11 · Next</p><h2 id="h-road">What each feature needs</h2>
+      <p class="lede">Sizes are rough: S is an evening or two, M is a weekend, L is longer. ReccoBeats is a free third-party API. It was tested in November 2026 with Spotify track IDs and accepts calls from this app's address.</p></div>
+    <div class="roadmap">
+      <div><span>Feature</span><span>What it needs</span><span>Size</span><span>Watch out for</span></div>
+      <div><b>Drop-in data export</b><p>A file picker and the same parsing the app does today. No new service.</p><span class="size" style="color:var(--level)">S</span><p>Large files take a few seconds to read.</p></div>
+      <div><b>Full history since you joined</b><p>Request "Extended streaming history" in your Spotify privacy settings. Same drop-in page.</p><span class="size" style="color:var(--level)">S–M</span><p>Spotify can take up to 30 days to send it.</p></div>
+      <div><b>Song DNA</b><p>ReccoBeats audio features, looked up by Spotify track ID, plus Chart.js, which the app already uses.</p><span class="size" style="color:var(--signal)">M</span><p>Some tracks may have no data. It depends on a third party staying up.</p></div>
+      <div><b>Recommended songs, artists, albums</b><p>ReccoBeats recommendations seeded with your top tracks. Album art comes from Spotify, one album at a time.</p><span class="size" style="color:var(--signal)">M</span><p>Quality varies by seed. Spotify's own recommendations are closed to this app.</p></div>
+      <div><b>Playlist generator</b><p>The two above, plus Spotify's create-playlist and add-items endpoints and the playlist-modify-private permission.</p><span class="size" style="color:var(--peak)">M–L</span><p>Users must log in again to grant the new permission.</p></div>
+    </div>
+    <p class="muted" style="margin:0;font-size:14px">All artists, tracks and numbers on this page are made-up sample data.</p>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ---------- Level scale: green → amber → red ----------
+const STOPS = ['#4fd68f', '#ffb547', '#ff5f6d'];
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const ramp = (t, a = 1) => {
+  t = Math.min(1, Math.max(0, t)) * (STOPS.length - 1);
+  const i = Math.min(STOPS.length - 2, Math.floor(t)), f = t - i, A = hex(STOPS[i]), B = hex(STOPS[i + 1]);
+  const c = A.map((v, k) => Math.round(v + (B[k] - v) * f));
+  return `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+};
+const $$ = (s, f) => document.querySelectorAll(s).forEach(f);
+const svgI = (p, s = 16, sw = 1.6) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+
+// ---------- Windows 11 / Edge window chrome ----------
+const BRAND_MARK = s => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true"><g style="fill:var(--signal)"><rect x="2" y="9" width="3" height="6" rx="1.5"/><rect x="7" y="5" width="3" height="14" rx="1.5"/><rect x="12" y="2" width="3" height="20" rx="1.5"/><rect x="17" y="7" width="3" height="10" rx="1.5"/></g></svg>`;
+$$('.win', w => {
+  const [host, ...rest] = w.dataset.url.split('/');
+  w.insertAdjacentHTML('afterbegin',
+    `<div class="titlebar"><div class="wtab">${BRAND_MARK(14)}<span class="t">${w.dataset.win}</span><span class="x">${svgI('<path d="M6 6l12 12M18 6 6 18"/>', 12)}</span></div>` +
+    `<span class="newtab">${svgI('<path d="M12 5v14M5 12h14"/>', 14)}</span>` +
+    `<div class="winctl"><span>${svgI('<path d="M5 12h14"/>', 14, 1.2)}</span><span>${svgI('<rect x="5" y="5" width="14" height="14" rx="2"/>', 12, 1.2)}</span><span>${svgI('<path d="M6 6l12 12M18 6 6 18"/>', 14, 1.2)}</span></div></div>` +
+    `<div class="toolbar"><span class="ib">${svgI('<path d="M19 12H5M11 6l-6 6 6 6"/>')}</span><span class="ib" style="opacity:.5">${svgI('<path d="M5 12h14M13 6l6 6-6 6"/>')}</span><span class="ib">${svgI('<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>')}</span>` +
+    `<div class="addr">${svgI('<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.01"/>', 14)}<span><span class="host">${host}</span>/${rest.join('/')}</span></div>` +
+    `<span class="ib">${svgI('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>')}</span><span class="profile">MS</span><span class="ib">${svgI('<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>')}</span></div>`);
+});
+
+// ---------- Navigation: only the active icon lights up, coloured by its place on the scale ----------
+const ICONS = {
+  overview: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  tracks: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  artists: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/>',
+  genres: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  dna: '<path d="M6 3c0 5 12 5 12 9s-12 4-12 9"/><path d="M18 3c0 5-12 5-12 9s12 4 12 9"/><path d="M8 7h8M8 17h8"/>',
+  discover: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+  insights: '<path d="M2 12h3l3-8 4 16 3-10 2 2h5"/>',
+};
+const NAVS = {
+  now: [['overview', 'Overview'], ['tracks', 'Top tracks'], ['artists', 'Top artists'], ['genres', 'Genres'], ['insights', 'Insights']],
+  future: [['overview', 'Overview'], ['tracks', 'Top tracks'], ['artists', 'Top artists'], ['genres', 'Genres'], ['dna', 'Song DNA'], ['discover', 'Discover'], ['insights', 'Insights']],
+};
+let gid = 0;
+const navIcon = (k, i, n, on) => {
+  if (!on) return svgI(ICONS[k], 20, 1.8);
+  const id = 'g' + gid++;
+  return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="url(#${id})" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="filter:drop-shadow(0 0 6px ${ramp(i / (n - 1), .6)})">` +
+    `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ramp(i / n)}"/><stop offset="1" stop-color="${ramp((i + 1) / n)}"/></linearGradient></defs>${ICONS[k]}</svg>`;
+};
+const navHTML = (list, on) => list.map(([k, n], i) => `<div class="nav-item${i === on ? ' on' : ''}"${i === on ? ' aria-current="page"' : ''}>${navIcon(k, i, list.length, i === on)}${n}</div>`).join('');
+$$('aside.side', a => a.innerHTML = `<div class="brand">${BRAND_MARK(24)}Wavelength</div>` + navHTML(NAVS[a.dataset.nav], +a.dataset.active) +
+  '<div class="who"><span class="avatar">MS</span><div><div>Signed in</div><div class="muted" style="font-size:12px">Log out</div></div></div>');
+$$('[data-navdemo]', el => el.innerHTML = [0, 2, 4].map(on => `<div style="display:flex;gap:4px">${NAVS.now.map(([k], i) => `<span class="nav-item${i === on ? ' on' : ''}" style="padding:6px;min-height:0">${navIcon(k, i, NAVS.now.length, i === on)}</span>`).join('')}</div>`).join(''));
+
+// ---------- Swatches, waves, meters ----------
+$$('[data-swatches]', el => el.innerHTML = [['Ink', '#0B0C12', 'Page background'], ['Panel', '#141621', 'Tiles, cards'], ['Text', '#EEF0F7', '17:1 on ink'], ['Signal', '#FFB547', 'Selected, buttons, data'], ['Level', '#4FD68F', 'Low end of the scale'], ['Peak', '#FF5F6D', 'High end of the scale']]
+  .map(([n, h, r]) => `<div class="tile" style="padding:0;gap:0;overflow:hidden"><div style="height:64px;background:${h}"></div><div style="padding:10px 12px 12px;font-size:13px"><b style="display:block">${n}</b><span class="muted">${h} · ${r}</span></div></div>`).join(''));
+const rng = seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+$$('[data-wave]', w => {
+  const r = rng(+w.dataset.wave), n = +w.dataset.n;
+  w.innerHTML = Array.from({ length: n }, (_, i) => { const env = Math.sin(Math.PI * (i + .5) / n) * .55 + .45; return `<i style="--h:${Math.max(8, Math.round((.3 + .7 * r()) * env * 100))}%"></i>`; }).join('');
+});
+const meterHTML = (v, n, label) => `<span class="meter" role="img" aria-label="${label}">` +
+  Array.from({ length: n }, (_, i) => `<i class="${i < Math.round(v * n) ? 'on ' + (i / n >= .82 ? 'clip' : i / n >= .6 ? 'hot' : '') : ''}"></i>`).join('') + '</span>';
+$$('[data-meter]', m => m.outerHTML = meterHTML(+m.dataset.meter, +m.dataset.n, m.dataset.label || `${Math.round(+m.dataset.meter * 100)} out of 100`));
+
+// ---------- Sample data ----------
+const R = rng(42);
+const jitter = (v, s = .12) => Math.min(.98, Math.max(.02, v + (R() - .5) * 2 * s));
+const GENRES = { // dance, energy, mood, acoustic, instrumental, speech, live, tempo
+  'indie pop': [.62, .66, .58, .2, .03, .05, .12, 118], 'alt rock': [.45, .85, .4, .05, .05, .06, .2, 140], 'uk garage': [.8, .78, .62, .03, .2, .1, .1, 132],
+  'neo soul': [.66, .45, .55, .45, .05, .12, .12, 92], 'house': [.82, .8, .6, .04, .6, .06, .1, 124], 'dream pop': [.42, .48, .32, .35, .3, .04, .1, 104],
+  'drum and bass': [.55, .92, .45, .01, .45, .08, .15, 174], 'lo-fi beats': [.7, .3, .45, .7, .85, .08, .1, 84],
+};
+const KEYS = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+const make = ([t, a, g, h, al, yr, len, mv]) => { const p = GENRES[g];
+  return { t, a, g, h, al: al || t, yr: yr || 2024, len: len || '3:30', mv, dance: jitter(p[0]), energy: jitter(p[1]), mood: jitter(p[2]), acoustic: jitter(p[3]), instrumental: jitter(p[4], .15), speech: jitter(p[5], .04), live: jitter(p[6], .06), tempo: Math.round(p[7] + (R() - .5) * 24), key: Math.floor(R() * 12), major: R() > .45 }; };
+const TRACKS = [
+  ['Glass Hours', 'Mira Vale', 'dream pop', 20, 'Low Season', 2024, '3:28', 'up 3'], ['Low Tide Static', 'The Northern Lines', 'alt rock', 200, 'Breakwater', 2023, '4:02', 'same'],
+  ['Sodium Lights', 'Kito & Ren', 'drum and bass', 330, 'Sodium Lights', 2025, '5:11', 'down 1'], ['Paper Satellites', 'Juno Marsh', 'indie pop', 285, 'Orbiter', 2022, '3:47', 'new'],
+  ['Overpass', 'Halcyon Avenue', 'alt rock', 160, 'City Hum', 2021, '3:55', 'up 2'], ['Soft Machine Heart', 'Delta Bloom', 'neo soul', 120, 'Soft Machine', 2024, '4:19', 'down 2'],
+  ['Night Bus Home', 'Ostra', 'uk garage', 240, 'N38', 2025, '3:36', 'up 5'], ['Afterglow Index', 'Mira Vale', 'dream pop', 20, 'Low Season', 2024, '4:44', 'same'],
+  ['Concrete Bloom', 'Field Theory', 'house', 45, 'Concrete Bloom EP', 2023, '6:02', 'new'], ['Slow Signal', 'Juno Marsh', 'indie pop', 285, 'Orbiter', 2022, '3:09', 'down 4'],
+  ['Pale Blue Radio', 'Mira Vale', 'dream pop', 200], ['Lantern', 'Mira Vale', 'dream pop', 40], ['Coastline', 'Mira Vale', 'indie pop', 180], ['Half-Light', 'Pale Atlas', 'lo-fi beats', 90],
+  ['Tape Hiss Morning', 'Pale Atlas', 'lo-fi beats', 60], ['Warehouse Sunday', 'Field Theory', 'house', 300], ['Body Clock', 'Field Theory', 'house', 10], ['Two-Step Weather', 'Ostra', 'uk garage', 260],
+  ['Last Train', 'Ostra', 'uk garage', 220], ['Amen Horizon', 'Kito & Ren', 'drum and bass', 350], ['Bassline Cathedral', 'Kito & Ren', 'drum and bass', 310], ['Velvet Static', 'Delta Bloom', 'neo soul', 140],
+  ['Slow Honey', 'Delta Bloom', 'neo soul', 30], ['Feedback Choir', 'The Northern Lines', 'alt rock', 210], ['Rust Belt', 'Halcyon Avenue', 'alt rock', 170], ['Neon Littoral', 'Sundial Club', 'indie pop', 15],
+  ['Paper Crowns', 'Sundial Club', 'indie pop', 345], ['Quiet Engines', 'Juno Marsh', 'dream pop', 270], ['Satellite Hearts', 'Juno Marsh', 'indie pop', 250], ['Rooftop Static', 'Halcyon Avenue', 'alt rock', 150],
+  ['Low Orbit', 'Pale Atlas', 'lo-fi beats', 100], ['Midnight Index', 'Field Theory', 'house', 70],
+].map(make);
+TRACKS[0].tempo = 104; TRACKS[0].key = 9; TRACKS[0].major = false;
+const RECS = [['Polar Drift', 'Coral Arcade', 'dream pop', 190], ['Signal Fires', 'Hollow Coast', 'alt rock', 10], ['Moth Light', 'Ivy Ledger', 'indie pop', 300], ['Late Bloomer', 'Sable & Finch', 'neo soul', 35],
+  ['Underpass Choir', 'Grey Meridian', 'uk garage', 250], ['Ultraviolet Bus', 'Coral Arcade', 'dream pop', 275], ['Station to Shore', 'Hollow Coast', 'indie pop', 165], ['Breakbeat Garden', 'Nova Saint', 'drum and bass', 335],
+  ['Room Tone', 'Ivy Ledger', 'lo-fi beats', 80], ['Sunset Protocol', 'Grey Meridian', 'house', 50], ['Fable Engine', 'Sable & Finch', 'neo soul', 125], ['Paper Lanterns', 'Coral Arcade', 'dream pop', 215],
+  ['Night Shift Disco', 'Nova Saint', 'house', 20], ['Mono Heart', 'Hollow Coast', 'alt rock', 205], ['Soft Focus', 'Ivy Ledger', 'indie pop', 320], ['Glasshouse', 'Grey Meridian', 'uk garage', 230]].map(make);
+const ARTISTS = [['Juno Marsh', 'indie pop', 285, 4], ['Mira Vale', 'dream pop', 20, 6], ['Halcyon Avenue', 'alt rock', 160, 3], ['The Northern Lines', 'alt rock', 200, 2], ['Ostra', 'uk garage', 240, 3],
+  ['Field Theory', 'house', 45, 4], ['Delta Bloom', 'neo soul', 120, 3], ['Kito & Ren', 'drum and bass', 330, 3], ['Pale Atlas', 'lo-fi beats', 90, 3], ['Sundial Club', 'indie pop', 15, 2], ['Coral Arcade', 'dream pop', 190, 1]];
+const ext = svgI('<path d="M14 3h7v7M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>', 16, 1.8);
+const moveHTML = mv => { if (mv === 'new') return '<span class="move new">NEW</span>'; if (mv === 'same') return '<span class="move same">–</span>';
+  const [d, n] = mv.split(' '); return `<span class="move ${d}" aria-label="${d} ${n} places">${d === 'up' ? '▲' : '▼'} ${n}</span>`; };
+
+// ---------- Part one pages ----------
+$$('[data-tracks]', el => el.innerHTML = TRACKS.slice(1, 10).map((s, i) =>
+  `<div class="row"><span class="rank">${String(i + 2).padStart(2, '0')}</span><div class="art" style="--h:${s.h};width:44px"></div>` +
+  `<div style="min-width:0"><div class="t">${s.t}</div><div class="a">${s.a}</div></div><div class="a">${s.al}</div>` +
+  `<span class="num muted" style="font-size:14px">${s.yr}</span><span class="num muted" style="font-size:14px">${s.len}</span>${moveHTML(s.mv)}<span class="ext">${ext}</span></div>`).join(''));
+$$('[data-artists]', el => {
+  const [a, b] = el.dataset.artists.split('-').map(Number), small = el.hasAttribute('data-small');
+  el.innerHTML = ARTISTS.slice(a, b).map(([n, g, h, c], i) => small
+    ? `<div style="display:grid;gap:8px;justify-items:center;text-align:center;min-width:0"><div class="cd" style="--h:${h};width:100%;max-width:96px"></div><span style="font-size:14px;font-weight:700">${n}</span></div>`
+    : `<div class="artist-card"><div class="cd" style="--h:${h}"></div><span class="rank">#${String(i + a + 1).padStart(2, '0')}</span><b>${n}</b><span class="pill" style="justify-self:start">${g}</span><span class="muted" style="font-size:13px">${c} of your top tracks</span></div>`).join('');
+});
+const RECENT = [[6, '4 min ago'], [0, '9 min ago'], [9, '13 min ago'], [4, '41 min ago'], [8, '1 h ago'], [1, '2 h ago']];
+$$('[data-recent]', el => el.innerHTML = RECENT.slice(0, +el.dataset.recent).map(([i, ago]) => { const s = TRACKS[i];
+  return `<div class="row simple"><div class="art" style="--h:${s.h};width:44px"></div><div style="min-width:0"><div class="t">${s.t}</div><div class="a">${s.a}</div></div><span class="muted" style="font-size:13px">${ago}</span></div>`; }).join(''));
+const GENRE_COUNTS = [['indie pop', 14], ['alt rock', 12], ['uk garage', 10], ['neo soul', 9], ['house', 8], ['dream pop', 7], ['drum and bass', 6], ['lo-fi beats', 5], ['art pop', 4], ['post-punk', 3]];
+$$('[data-genres]', el => { const mini = el.classList.contains('mini');
+  el.innerHTML = GENRE_COUNTS.slice(0, +el.dataset.genres).map(([g, n]) => `<div class="bar" title="${g}: ${n} artists">${mini ? '' : `<span class="n">${n}</span>`}<div class="col" style="--v:${Math.round(n / 14 * 100)}%"></div><span class="name">${g}</span></div>`).join(''); });
+
+const MONTHS = [["Dec '23", 3120], ['Jan', 4410], ['Feb', 3890], ['Mar', 4200], ['Apr', 3650], ['May', 4980], ['Jun', 5210], ['Jul', 4730], ['Aug', 3340], ['Sep', 3980], ['Oct', 4120], ["Nov '24", 2583]];
+const YEARS = [['2016', 9800], ['2017', 21400], ['2018', 27900], ['2019', 31200], ['2020', 41800], ['2021', 36500], ['2022', 33100], ['2023', 38700], ['2024', 45200], ['2025', 29400], ['2026', 17480]];
+const bars = (el, data) => { const max = Math.max(...data.map(d => d[1])), full = el.hasAttribute('data-full');
+  if (!full) el.classList.add('compact');
+  el.innerHTML = data.map(([lab, v]) => `<div class="m${v === max ? ' max' : ''}" title="${lab}: ${v.toLocaleString()} min"><div class="slot"><i style="--h:${Math.round(v / max * 100)}%"></i></div>` +
+    (full ? `<span class="lab">${lab}</span><span class="val">${(v / 1000).toFixed(1)}k</span>` : '') + '</div>').join(''); };
+$$('[data-months]', el => bars(el, MONTHS));
+$$('[data-years]', el => bars(el, YEARS));
+
+const level = (d, h) => { const wk = d < 5; let x = .05;
+  if (wk && h >= 7 && h <= 9) x += .5; if (wk && h >= 12 && h <= 13) x += .25; if (wk && h >= 17 && h <= 19) x += .6;
+  if (h >= 20 && h <= 23) x += .4 + (d === 4 || d === 5 ? .3 : 0); if (!wk && h >= 10 && h <= 14) x += .5; if (d >= 4 && h <= 1) x += .3; return Math.min(1, x); };
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+$$('[data-heat]', el => { let html = '<span></span>' + Array.from({ length: 24 }, (_, h) => `<span class="hr">${h % 3 === 0 ? String(h).padStart(2, '0') : ''}</span>`).join('');
+  DAYS.forEach((d, di) => { html += `<span class="d">${d}</span>`;
+    for (let h = 0; h < 24; h++) { const v = level(di, h); html += `<i class="c" style="--v:${Math.round(v * 100)}%" title="${d} ${String(h).padStart(2, '0')}:00 · ${v > .66 ? 'a lot' : v > .33 ? 'some' : 'little'}"></i>`; } });
+  el.innerHTML = html; });
+
+// ---------- Part two: Discover ----------
+const avg = k => TRACKS.reduce((s, t) => s + t[k], 0) / TRACKS.length;
+const FEAT_COL = ['var(--level)', 'var(--signal)', 'var(--peak)'];
+const bar = (v, c) => `<span title="${Math.round(v * 100)}"><i style="width:${Math.round(v * 100)}%;background:${c}"></i></span>`;
+const FEATS = [['dance', 'Danceability'], ['energy', 'Energy'], ['mood', 'Mood (happy)'], ['acoustic', 'Acoustic'], ['instrumental', 'Instrumental'], ['speech', 'Spoken words'], ['live', 'Live feel']];
+$$('[data-sound]', el => el.innerHTML = '<div class="feat" style="grid-template-columns:auto 1fr;gap:10px 12px">' +
+  FEATS.slice(0, 5).map(([k, n], i) => `<span class="muted" style="background:none;height:auto;font-size:13px">${n}</span>${bar(avg(k), ramp(i / 4))}`).join('') + '</div>');
+const SEEDS = [0, 3, 6, 8, 1];
+$$('[data-seeds]', el => el.innerHTML = SEEDS.map(i => `<span class="pill" style="display:inline-flex;gap:8px;align-items:center;color:var(--text);padding:4px 12px 4px 4px"><i class="art" style="--h:${TRACKS[i].h};width:24px;border-radius:999px"></i>${TRACKS[i].t}</span>`).join(''));
+const dist = (s, t) => Math.abs(s.dance - t.dance) + Math.abs(s.energy - t.energy) + Math.abs(s.mood - t.mood) + Math.abs(s.tempo - t.tempo) / 120;
+const you = { dance: avg('dance'), energy: avg('energy'), mood: avg('mood'), tempo: avg('tempo') };
+const match = s => Math.max(0, Math.min(99, Math.round(100 - dist(s, you) * 55)));
+$$('[data-recs]', el => el.innerHTML = [...RECS].sort((a, b) => match(b) - match(a)).slice(0, 6).map(s =>
+  `<div class="row rec"><div class="art" style="--h:${s.h};width:44px"></div><div style="min-width:0"><div class="t">${s.t}</div><div class="a">${s.a} · ${s.g}</div></div>` +
+  `<span>${meterHTML(match(s) / 100, 10, `${match(s)}% match`)} <b class="num" style="font-size:13px">${match(s)}%</b></span><button class="btn-ghost" type="button" style="padding:6px 12px;min-height:36px">+ Add</button></div>`).join(''));
+$$('[data-recartists]', el => el.innerHTML = [['Coral Arcade', 190, 'Mira Vale'], ['Hollow Coast', 10, 'The Northern Lines'], ['Ivy Ledger', 300, 'Juno Marsh'], ['Nova Saint', 335, 'Kito & Ren']]
+  .map(([n, h, b]) => `<div style="display:flex;gap:12px;align-items:center"><div class="cd" style="--h:${h};width:54px"></div><div><b>${n}</b><div class="muted" style="font-size:13px">Because you play ${b}</div></div></div>`).join(''));
+$$('[data-albums]', el => el.innerHTML = [['Tidal Rooms', 'Coral Arcade', 190], ['Static Season', 'Hollow Coast', 10], ['Moth Light', 'Ivy Ledger', 300], ['Nightworks', 'Nova Saint', 335], ['Meridian', 'Grey Meridian', 250], ['Slow Bloom', 'Sable & Finch', 35]]
+  .map(([t, a, h]) => `<div style="display:grid;gap:8px;min-width:0"><div class="case" style="--h:${h}"></div><b style="font-size:14px">${t}</b><span class="muted" style="font-size:13px;margin-top:-6px">${a}</span></div>`).join(''));
+const g = id => document.getElementById(id);
+const generate = () => {
+  const target = { energy: g('g-energy').value / 100, dance: g('g-dance').value / 100, mood: g('g-mood').value / 100, tempo: +g('g-tempo').value };
+  g('o-energy').textContent = g('g-energy').value; g('o-dance').textContent = g('g-dance').value; g('o-mood').textContent = g('g-mood').value; g('o-tempo').textContent = target.tempo + ' BPM';
+  g('tape-name').textContent = g('g-name').value || 'Untitled mix';
+  g('tape-sub').textContent = `8 tracks · energy ${g('g-energy').value} · ${target.tempo} BPM`;
+  document.querySelector('[data-genlist]').innerHTML = [...RECS, ...TRACKS.slice(10)].map(s => [s, dist(s, target)]).sort((a, b) => a[1] - b[1]).slice(0, 8).map(([s], i) =>
+    `<div class="row simple" style="grid-template-columns:22px 40px minmax(0,1fr)"><span class="muted num" style="font-weight:800">${i + 1}</span><div class="art" style="--h:${s.h};width:40px"></div><div style="min-width:0"><div class="t">${s.t}</div><div class="a">${s.a} · ${s.tempo} BPM</div></div></div>`).join('');
+};
+['g-name', 'g-energy', 'g-dance', 'g-mood', 'g-tempo'].forEach(id => g(id).addEventListener('input', generate));
+generate();
+
+// ---------- Part two: Song DNA charts ----------
+let selected = 0;
+const showSel = () => { const s = TRACKS[selected];
+  g('sel-art').style.setProperty('--h', s.h); g('sel-title').textContent = s.t; g('sel-artist').textContent = s.a;
+  g('sel-chips').innerHTML = `<span class="pill">${s.tempo} BPM</span><span class="pill">${KEYS[s.key]} ${s.major ? 'major' : 'minor'}</span><span class="pill">${s.g}</span>`; };
+showSel();
+if (window.Chart) {
+  Chart.defaults.color = '#a3a9c4'; Chart.defaults.font.family = 'Figtree, Arial, sans-serif'; Chart.defaults.font.size = 12; Chart.defaults.borderColor = 'rgba(255,255,255,.07)';
+  const AXES = [['dance', 'Danceability'], ['energy', 'Energy'], ['mood', 'Mood (sad → happy)'], ['acoustic', 'Acoustic'], ['instrumental', 'Instrumental'], ['tempo', 'Tempo (BPM)']];
+  const ax = g('ax-x'), ay = g('ax-y');
+  [ax, ay].forEach(sel => sel.innerHTML = AXES.map(([k, n]) => `<option value="${k}">${n}</option>`).join(''));
+  ax.value = 'mood'; ay.value = 'energy';
+  const data = () => TRACKS.map((s, i) => ({ x: s[ax.value], y: s[ay.value], i }));
+  const scaleFor = sel => ({ ...(sel.value === 'tempo' ? { min: 60, max: 190 } : { min: 0, max: 1, ticks: { callback: v => Math.round(v * 100) } }), title: { display: true, text: AXES.find(a => a[0] === sel.value)[1] } });
+  const scatter = new Chart(g('scatter'), {
+    type: 'scatter',
+    data: { datasets: [{ data: data(), backgroundColor: c => ramp(TRACKS[c.raw ? c.raw.i : 0].dance, .9), borderColor: '#fff',
+      pointRadius: c => c.raw && c.raw.i === selected ? 11 : 6, pointBorderWidth: c => c.raw && c.raw.i === selected ? 3 : 0, pointHoverRadius: 10 }] },
+    options: { maintainAspectRatio: false, animation: { duration: 500 },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${TRACKS[c.raw.i].t} · ${TRACKS[c.raw.i].a} · ${TRACKS[c.raw.i].g}` } } },
+      scales: { x: scaleFor(ax), y: scaleFor(ay) },
+      onClick: (e, els) => { if (els.length) { selected = scatter.data.datasets[0].data[els[0].index].i; showSel(); scatter.update(); updateRadar(); } } },
+  });
+  const reAxis = () => { scatter.data.datasets[0].data = data(); scatter.options.scales.x = scaleFor(ax); scatter.options.scales.y = scaleFor(ay); scatter.update(); };
+  ax.addEventListener('change', reAxis); ay.addEventListener('change', reAxis);
+  const RK = FEATS.map(f => f[0]);
+  const radar = new Chart(g('radar'), { type: 'radar',
+    data: { labels: ['Dance', 'Energy', 'Mood', 'Acoustic', 'Instrum.', 'Spoken', 'Live'], datasets: [
+      { label: 'This track', data: RK.map(k => TRACKS[selected][k]), borderColor: '#ffb547', backgroundColor: 'rgba(255,181,71,.22)', pointBackgroundColor: '#ffb547', borderWidth: 2 },
+      { label: 'Your average', data: RK.map(avg), borderColor: '#4fd68f', backgroundColor: 'rgba(79,214,143,.08)', borderDash: [5, 4], pointRadius: 0, borderWidth: 2 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+      scales: { r: { min: 0, max: 1, ticks: { display: false, stepSize: .25 }, grid: { color: 'rgba(255,255,255,.1)' }, angleLines: { color: 'rgba(255,255,255,.1)' }, pointLabels: { color: '#eef0f7', font: { size: 11, weight: '600' } } } } } });
+  const updateRadar = () => { radar.data.datasets[0].data = RK.map(k => TRACKS[selected][k]); radar.update(); };
+  const bins = Array.from({ length: 12 }, (_, i) => 70 + i * 10);
+  new Chart(g('tempo'), { type: 'bar',
+    data: { labels: bins.map(String), datasets: [{ data: bins.map(b => TRACKS.filter(s => s.tempo >= b && s.tempo < b + 10).length), backgroundColor: bins.map((_, i) => ramp(i / 11, .9)), borderRadius: 4 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { title: c => `${c[0].label}–${+c[0].label + 9} BPM`, label: c => `${c.raw} tracks` } } },
+      scales: { x: { grid: { display: false } }, y: { ticks: { stepSize: 2 } } } } });
+  new Chart(g('keys'), { type: 'polarArea',
+    data: { labels: KEYS, datasets: [{ data: KEYS.map((_, k) => TRACKS.filter(s => s.key === k).length), backgroundColor: KEYS.map((_, k) => ramp(k / 11, .75)), borderColor: '#0b0c12' }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.raw} tracks in ${c.label}` } } },
+      scales: { r: { ticks: { display: false }, grid: { color: 'rgba(255,255,255,.1)' }, pointLabels: { display: true, centerPointLabels: true, color: '#eef0f7', font: { size: 11 } } } } } });
+}
+</script>
+</body>
+</html>

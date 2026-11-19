@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wavelength Design Language</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Space+Mono:wght@400;700&family=Syncopate:wght@700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a dark studio rack. Every kind of data gets its own instrument: waveform for time, meters for scores, vinyl for artists, EQ for genres, tracklists for songs. */
+  --bg: #0b0c12;
+  --surface: #141621;
+  --surface-2: #1d2030;
+  --line: #2b2f45;
+  --text: #eef0f7;
+  --muted: #a3a9c4;
+  --signal: #ffb547;   /* the one accent: selected, primary action, data marks */
+  --level: #4fd68f;    /* meter zones only: safe / hot / clip, like studio gear */
+  --peak: #ff5f6d;
+  --on-signal: #1a1205;
+  --font-display: "Syncopate", "Arial Black", sans-serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, Menlo, monospace;
+  --radius: 14px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); line-height: 1.5; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+
+.page { max-width: 1180px; margin: 0 auto; padding: 56px 20px 96px; display: grid; gap: 80px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--signal); margin: 0 0 10px; }
+h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: .02em; }
+h1 { font-size: clamp(30px, 5.4vw, 56px); line-height: 1.05; }
+h2 { font-size: clamp(20px, 2.6vw, 26px); }
+.lede { color: var(--muted); max-width: 65ch; margin: 14px 0 0; font-size: 17px; }
+.toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+.toc a { font-family: var(--font-mono); font-size: 12px; text-decoration: none; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; }
+.toc a:hover { color: var(--text); border-color: var(--signal); }
+section { display: grid; gap: 22px; scroll-margin-top: 24px; }
+.hero-wave { margin-top: 36px; }
+
+/* Foundations */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+.swatch { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.swatch .chip { height: 70px; }
+.swatch div:last-child { padding: 10px 12px 12px; font-size: 13px; }
+.swatch b { display: block; }
+.swatch code { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.type-rows { display: grid; gap: 12px; }
+.type-row { display: grid; grid-template-columns: 180px 1fr; gap: 20px; align-items: baseline; padding: 16px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.type-row .label { margin: 0; }
+.motifs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.motif { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; align-content: start; }
+.motif p { margin: 0; font-size: 14px; color: var(--muted); }
+.motif b { color: var(--text); display: block; font-size: 15px; }
+.motif .stage { height: 96px; display: flex; align-items: center; justify-content: center; }
+
+/* Shared pieces */
+.label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.big { font-family: var(--font-display); font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.art { aspect-ratio: 1; border-radius: 8px; flex-shrink: 0; background: linear-gradient(135deg, hsl(var(--h) 72% 58%), hsl(calc(var(--h) + 70) 55% 24%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+
+.wave { display: flex; align-items: center; gap: 3px; height: 90px; width: 100%; }
+.wave i { flex: 1; min-width: 2px; height: var(--h); border-radius: 2px; background: var(--line); }
+.wave i.past { background: var(--signal); }
+
+.meter { display: inline-flex; gap: 2px; vertical-align: middle; }
+.meter i { width: 6px; height: 14px; border-radius: 1px; background: var(--line); }
+.meter i.on { background: var(--level); }
+.meter i.on.hot { background: var(--signal); }
+.meter i.on.clip { background: var(--peak); }
+
+.vinyl { position: relative; border-radius: 50%; aspect-ratio: 1; flex-shrink: 0;
+  background: conic-gradient(from 20deg, rgba(255,255,255,.08), transparent 12%, transparent 48%, rgba(255,255,255,.06) 58%, transparent 70%),
+              repeating-radial-gradient(circle, #121319 0 1.5px, #1d1f2b 1.5px 3px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.vinyl::after { content: ""; position: absolute; inset: 31%; border-radius: 50%;
+  background: radial-gradient(circle, var(--bg) 0 9%, transparent 10%), linear-gradient(135deg, hsl(var(--h) 72% 58%), hsl(calc(var(--h) + 70) 55% 26%)); }
+.spin { animation: spin 7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.eq { display: flex; align-items: flex-end; gap: 12px; height: 240px; }
+.eq .bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; min-width: 0; }
+.eq .col { width: 100%; height: var(--v); border-radius: 2px;
+  background: linear-gradient(to top, var(--level), var(--level) 55%, var(--signal) 78%, var(--peak));
+  background-size: 100% 240px; background-position: bottom;
+  -webkit-mask: repeating-linear-gradient(to top, #000 0 8px, transparent 8px 11px);
+          mask: repeating-linear-gradient(to top, #000 0 8px, transparent 8px 11px); }
+.eq .n { font-family: var(--font-mono); font-size: 12px; }
+.eq .name { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.25; min-height: 30px; }
+.eq.mini { height: 120px; gap: 6px; }
+.eq.mini .col { background-size: 100% 120px; -webkit-mask: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 7px); mask: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 7px); }
+.eq.mini .name { font-size: 10px; min-height: 26px; }
+
+.months { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px;
+  background: linear-gradient(var(--line), var(--line)) 0 70px / 100% 1px no-repeat; }
+.months .m { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.months .slot { width: 100%; max-width: 34px; height: 140px; display: flex; align-items: center; }
+.months .slot i { display: block; width: 100%; height: var(--h); border-radius: 4px; background: linear-gradient(180deg, var(--signal), #ff8a4c 50%, var(--signal)); }
+.months .m.max .slot i { background: linear-gradient(180deg, var(--peak), var(--signal) 50%, var(--peak)); }
+.months .lab { font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.months .val { font-family: var(--font-mono); font-size: 11px; }
+.months.compact { background-position: 0 32px; }
+.months.compact .slot { height: 64px; }
+.months.compact .val { display: none; }
+
+.heat { display: grid; grid-template-columns: 38px repeat(24, 1fr); gap: 3px; align-items: center; }
+.heat .c { aspect-ratio: 1; border-radius: 3px; background: color-mix(in oklab, var(--signal) var(--v), var(--surface-2)); }
+.heat .d, .heat .hr { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.heat .hr { text-align: center; }
+.legend { display: flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.legend i { width: 14px; height: 14px; border-radius: 3px; background: color-mix(in oklab, var(--signal) var(--v), var(--surface-2)); }
+
+.eqanim { display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
+.eqanim i { width: 4px; background: var(--signal); border-radius: 1px; animation: bounce 1s ease-in-out infinite; }
+.eqanim i:nth-child(2) { animation-delay: -.35s; } .eqanim i:nth-child(3) { animation-delay: -.7s; }
+@keyframes bounce { 0%,100% { height: 25%; } 50% { height: 100%; } }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-t { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: var(--muted); }
+.cta { display: inline-flex; align-items: center; gap: 10px; background: var(--signal); color: var(--on-signal); font-weight: 700; font-size: 16px; padding: 14px 26px; border-radius: 999px; min-height: 48px; text-decoration: none; border: 0; }
+.switch { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px; font-family: var(--font-mono); font-size: 12px; }
+.switch span { padding: 8px 14px; border-radius: 999px; color: var(--muted); }
+.switch .on { background: var(--signal); color: var(--on-signal); font-weight: 700; }
+
+/* Browser frame + app shell */
+.scroll { overflow-x: auto; padding-bottom: 6px; }
+.frame { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--bg); box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+.frame.desktop { min-width: 1060px; }
+.chrome { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #10121b; border-bottom: 1px solid var(--line); }
+.chrome .dot { width: 10px; height: 10px; border-radius: 50%; background: #2f3349; }
+.chrome .url { margin-left: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); background: var(--surface-2); padding: 3px 14px; border-radius: 999px; }
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: 640px; }
+.side { border-right: 1px solid var(--line); padding: 22px 14px; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(180deg, #11131c, var(--bg)); }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 13px; letter-spacing: .08em; padding: 0 8px 20px; }
+.nav-item { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 10px; color: var(--muted); font-weight: 500; font-size: 14px; min-height: 44px; }
+.nav-item.on { color: var(--text); background: var(--surface-2); box-shadow: inset 3px 0 0 var(--signal); }
+.nav-item.on svg { color: var(--signal); }
+.who { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px; border-top: 1px solid var(--line); font-size: 13px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); font-family: var(--font-mono); font-size: 12px; }
+.main { padding: 26px 30px 34px; display: grid; gap: 18px; align-content: start; min-width: 0; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.topbar h3 { font-family: var(--font-display); font-size: 20px; margin: 0; letter-spacing: .03em; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.span2 { grid-column: span 2; } .span3 { grid-column: 1 / -1; }
+
+.row { display: grid; grid-template-columns: 36px 44px minmax(0, 1.4fr) minmax(0, 1fr) auto 24px; align-items: center; gap: 14px; padding: 8px 10px; border-radius: 10px; }
+.row:hover { background: var(--surface-2); }
+.row .rank { font-family: var(--font-mono); font-size: 15px; color: var(--muted); text-align: right; }
+.row .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .a { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .ext { color: var(--muted); display: grid; place-items: center; }
+.row.recent { grid-template-columns: 44px minmax(0, 1fr) auto; }
+
+.hero-track { display: grid; grid-template-columns: auto 132px 1fr auto; gap: 24px; align-items: center; background: linear-gradient(100deg, rgba(255,181,71,.12), transparent 60%), var(--surface); }
+.hero-track .num { font-family: var(--font-display); font-size: 64px; color: var(--signal); line-height: 1; }
+.hero-track h4 { font-family: var(--font-display); font-size: 24px; margin: 4px 0; }
+
+.artist-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.artist-card { display: grid; gap: 10px; padding: 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
+.artist-card .rank { font-family: var(--font-mono); font-size: 12px; color: var(--signal); }
+.artist-card b { font-size: 15px; }
+.stack { position: relative; width: 300px; height: 260px; flex-shrink: 0; }
+.stack .sleeve { position: absolute; left: 0; top: 0; width: 240px; height: 240px; border-radius: 6px; z-index: 1; box-shadow: 0 20px 40px rgba(0,0,0,.5); }
+.stack .vinyl { position: absolute; left: 70px; top: 10px; width: 220px; }
+
+.login { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 40px; min-height: 560px; padding: 56px 64px;
+  background: radial-gradient(60% 80% at 80% 40%, rgba(255,181,71,.14), transparent 70%), var(--bg); }
+.login h4 { font-family: var(--font-display); font-size: 46px; line-height: 1.05; margin: 0 0 16px; text-wrap: balance; }
+.login p { color: var(--muted); font-size: 18px; max-width: 42ch; margin: 0 0 28px; }
+.login small { display: block; margin-top: 18px; color: var(--muted); font-size: 13px; }
+.login .stack { width: 420px; height: 360px; }
+.login .stack .sleeve { width: 330px; height: 330px; }
+.login .stack .vinyl { left: 110px; top: 15px; width: 300px; }
+
+/* Phone */
+.duo { display: grid; grid-template-columns: auto 1fr; gap: 48px; align-items: start; }
+.phone { width: 360px; border: 9px solid #1b1d29; border-radius: 40px; overflow: hidden; background: var(--bg); box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+.phone .pbody { padding: 18px 16px 12px; display: grid; gap: 14px; }
+.phone .ptop { display: flex; justify-content: space-between; align-items: center; }
+.phone .tile { padding: 14px 16px; }
+.phone .big { font-size: 34px; }
+.phone .switch { width: 100%; justify-content: space-between; }
+.bottomnav { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--line); background: #10121b; padding: 8px 4px 14px; }
+.bottomnav span { display: grid; justify-items: center; gap: 2px; font-size: 10px; color: var(--muted); min-height: 44px; padding-top: 4px; }
+.bottomnav .on { color: var(--signal); }
+.notes { display: grid; gap: 14px; }
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+.note h3 { margin: 0 0 8px; font-size: 16px; }
+.note p, .note li { color: var(--muted); font-size: 15px; margin: 0; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.sample { font-family: var(--font-mono); font-size: 11px; color: var(--muted); border: 1px dashed var(--line); border-radius: 999px; padding: 4px 10px; }
+
+@media (max-width: 860px) {
+  .duo { grid-template-columns: 1fr; justify-items: center; }
+  .type-row { grid-template-columns: 1fr; gap: 6px; }
+}
+@media (max-width: 400px) { .phone { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .spin, .eqanim i { animation: none; } .eqanim i { height: 70%; } }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header>
+    <p class="eyebrow">Design language · v1 · mid-fidelity wireframes</p>
+    <h1>Wavelength: your listening, drawn like sound</h1>
+    <p class="lede">A new look for the listening-stats app. Today every screen is the same light card on a green glow. Here each kind of data gets its own instrument from a studio: time becomes a waveform, scores become level meters, artists become records, genres become an EQ and songs become a tracklist.</p>
+    <nav class="toc" aria-label="Sections">
+      <a href="#foundations">01 Foundations</a>
+      <a href="#login">02 Log in</a>
+      <a href="#overview">03 Overview</a>
+      <a href="#tracks">04 Top tracks</a>
+      <a href="#artists">05 Top artists</a>
+      <a href="#genres">06 Genres</a>
+      <a href="#insights">07 Insights</a>
+      <a href="#mobile">08 Phone + notes</a>
+    </nav>
+    <div class="wave hero-wave" data-seed="11" data-n="120" data-played="0.38" aria-hidden="true"></div>
+  </header>
+
+  <section id="foundations" aria-labelledby="h-found">
+    <div>
+      <p class="eyebrow">01</p>
+      <h2 id="h-found">Foundations</h2>
+      <p class="lede">One ink surface, one warm accent, and a green-amber-red scale kept only for meters, the way a mixing desk shows level. Numbers sit in a monospaced readout face so they line up like a display on hardware.</p>
+    </div>
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background:var(--bg)"></div><div><b>Ink</b><code>#0B0C12</code><br><span class="muted">Page background</span></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--surface)"></div><div><b>Panel</b><code>#141621</code><br><span class="muted">Tiles, cards</span></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--text)"></div><div><b>Text</b><code>#EEF0F7</code><br><span class="muted">17:1 on ink</span></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--signal)"></div><div><b>Signal</b><code>#FFB547</code><br><span class="muted">Selected, buttons, data</span></div></div>
+      <div class="swatch"><div class="chip" style="background:linear-gradient(90deg,var(--level) 0 60%,var(--signal) 60% 82%,var(--peak) 82%)"></div><div><b>Meter scale</b><code>#4FD68F · #FF5F6D</code><br><span class="muted">Level meters only</span></div></div>
+    </div>
+    <div class="type-rows">
+      <div class="type-row"><p class="label">Display · Syncopate</p><span style="font-family:var(--font-display);font-size:30px">Top tracks</span></div>
+      <div class="type-row"><p class="label">Readout · Space Mono</p><span class="mono" style="font-size:22px">48,213 min · 21:00–23:00 · #01</span></div>
+      <div class="type-row"><p class="label">Body · DM Sans</p><span style="font-size:17px">Most of your listening happens on weekday evenings, between 8 and 11pm.</span></div>
+    </div>
+    <div class="motifs">
+      <div class="motif"><div class="stage"><div class="wave" data-seed="3" data-n="40" data-played="0.55" style="height:70px" aria-hidden="true"></div></div><p><b>Waveform</b>Anything over time. Bars mirror around a centre line like an audio file.</p></div>
+      <div class="motif"><div class="stage"><span class="meter" data-v="0.78" data-n="20"></span></div><p><b>Level meter</b>Any 0–100 score, such as Spotify's popularity. Green, then amber, then red.</p></div>
+      <div class="motif"><div class="stage"><div class="vinyl spin" style="--h:285;width:90px" aria-hidden="true"></div></div><p><b>Vinyl</b>Artists. The artist photo sits on the record label.</p></div>
+      <div class="motif"><div class="stage"><div class="eq mini" style="width:100%;height:90px" data-genres="5" aria-hidden="true"></div></div><p><b>EQ bars</b>Genres and other counts, in segmented bars like a graphic equaliser.</p></div>
+      <div class="motif"><div class="stage" style="justify-content:flex-start"><div style="display:grid;gap:4px;width:100%"><span class="mono muted" style="font-size:12px">01 &nbsp;Glass Hours</span><span class="mono muted" style="font-size:12px">02 &nbsp;Low Tide Static</span><span class="mono muted" style="font-size:12px">03 &nbsp;Sodium Lights</span></div></div><p><b>Tracklist</b>Ranked songs, numbered like the back of an album sleeve.</p></div>
+    </div>
+  </section>
+
+  <section id="login" aria-labelledby="h-login">
+    <div><p class="eyebrow">02</p><h2 id="h-login">Log in</h2>
+      <p class="lede">The first screen sets the tone: a record sliding out of its sleeve, one clear button and a plain line about what access the app gets.</p></div>
+    <div class="scroll"><div class="frame desktop">
+      <div class="chrome"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">127.0.0.1:3000</span></div>
+      <div class="login">
+        <div>
+          <p class="eyebrow">Wavelength</p>
+          <h4>See how you really listen.</h4>
+          <p>Your top tracks, artists and genres, plus when and how much you listen, built from your Spotify account.</p>
+          <a class="cta" href="#login"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"/></svg>Connect with Spotify</a>
+          <small>Read-only access. The app never posts, follows or changes anything.</small>
+        </div>
+        <div class="stack" aria-hidden="true"><div class="sleeve art" style="--h:20"></div><div class="vinyl spin" style="--h:20"></div></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section id="overview" aria-labelledby="h-over">
+    <div><p class="eyebrow">03</p><h2 id="h-over">Overview</h2>
+      <p class="lede">Replaces the dashboard and the separate Recently played tab. Tiles of different sizes give the page a clear order: total listening first, then your top song, artists, genres and what you just played.</p></div>
+    <div class="scroll"><div class="frame desktop">
+      <div class="chrome"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">127.0.0.1:3000/#overview</span></div>
+      <div class="app">
+        <aside class="side" data-active="overview"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Overview</h3><div class="switch"><span class="on">4 weeks</span><span>6 months</span><span>All time</span></div></div>
+          <div class="bento">
+            <div class="tile span2">
+              <p class="label">Minutes listened · Dec '23 – Nov '24</p>
+              <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span class="big">48,213</span><span class="mono muted">min · about 33 days</span></div>
+              <div class="months compact" data-months></div>
+            </div>
+            <div class="tile">
+              <p class="label" style="display:flex;justify-content:space-between">On repeat · #1 <span class="eqanim" aria-hidden="true"><i></i><i></i><i></i></span></p>
+              <div style="display:flex;gap:14px;align-items:center">
+                <div class="art" style="--h:20;width:86px"></div>
+                <div style="min-width:0"><b style="font-size:18px">Glass Hours</b><div class="muted">Mira Vale</div><div class="muted" style="font-size:13px">Low Season</div></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center"><span class="label">Popularity</span><span><span class="meter" data-v="0.78" data-n="16"></span> <span class="mono">78</span></span></div>
+              <a class="mono" href="#overview" style="font-size:12px;color:var(--signal)">Open in Spotify ↗</a>
+            </div>
+            <div class="tile span2">
+              <p class="label">Top artists · last 4 weeks</p>
+              <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px" data-artists="5" data-size="small"></div>
+            </div>
+            <div class="tile">
+              <p class="label">Top genres</p>
+              <div class="eq mini" data-genres="6"></div>
+            </div>
+            <div class="tile span3">
+              <p class="label">Recently played</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px" data-recent></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section id="tracks" aria-labelledby="h-tracks">
+    <div><p class="eyebrow">04</p><h2 id="h-tracks">Top tracks</h2>
+      <p class="lede">Number one gets a hero row, and the rest read like the tracklist on an album sleeve. Spotify's popularity score (0–100) shows as a level meter, so you can spot your deep cuts at a glance.</p></div>
+    <div class="scroll"><div class="frame desktop">
+      <div class="chrome"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">127.0.0.1:3000/#tracks</span></div>
+      <div class="app">
+        <aside class="side" data-active="tracks"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Top tracks</h3><div class="switch"><span>4 weeks</span><span class="on">6 months</span><span>All time</span></div></div>
+          <div class="tile hero-track">
+            <span class="num">01</span>
+            <div class="art" style="--h:20;width:132px"></div>
+            <div style="min-width:0"><p class="label">Most played · 6 months</p><h4>Glass Hours</h4><div class="muted">Mira Vale · Low Season</div></div>
+            <div style="text-align:right"><p class="label">Popularity</p><span class="meter" data-v="0.78" data-n="20"></span> <span class="mono">78</span></div>
+          </div>
+          <div class="tile" style="gap:2px" data-tracks></div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section id="artists" aria-labelledby="h-artists">
+    <div><p class="eyebrow">05</p><h2 id="h-artists">Top artists</h2>
+      <p class="lede">Each artist is a record. Your number one gets the full sleeve treatment, and the rest sit on a shelf below it with their genres.</p></div>
+    <div class="scroll"><div class="frame desktop">
+      <div class="chrome"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">127.0.0.1:3000/#artists</span></div>
+      <div class="app">
+        <aside class="side" data-active="artists"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Top artists</h3><div class="switch"><span>4 weeks</span><span>6 months</span><span class="on">All time</span></div></div>
+          <div class="tile" style="flex-direction:row;align-items:center;gap:36px;background:linear-gradient(100deg,transparent 30%,rgba(255,181,71,.10)),var(--surface)">
+            <div class="stack" aria-hidden="true"><div class="sleeve art" style="--h:285"></div><div class="vinyl" style="--h:285"></div></div>
+            <div style="display:grid;gap:12px">
+              <p class="label" style="color:var(--signal)">#01 · All time</p>
+              <span style="font-family:var(--font-display);font-size:36px;line-height:1.05">Juno Marsh</span>
+              <div class="chips"><span class="chip-t">indie pop</span><span class="chip-t">dream pop</span><span class="chip-t">art pop</span></div>
+              <div><span class="label">Popularity</span><br><span class="meter" data-v="0.64" data-n="20"></span> <span class="mono">64</span></div>
+            </div>
+          </div>
+          <div class="artist-grid" data-artists="10" data-skip="1"></div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section id="genres" aria-labelledby="h-genres">
+    <div><p class="eyebrow">06</p><h2 id="h-genres">Genres</h2>
+      <p class="lede">A graphic equaliser in place of the plain numbered list. Bar height is how many of your top 50 artists carry that genre, which is how the app counts genres today.</p></div>
+    <div class="scroll"><div class="frame desktop">
+      <div class="chrome"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">127.0.0.1:3000/#genres</span></div>
+      <div class="app">
+        <aside class="side" data-active="genres"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Genres</h3><div class="switch"><span class="on">4 weeks</span><span>6 months</span><span>All time</span></div></div>
+          <div class="tile">
+            <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap"><p class="label">Artists per genre · from your top 50 artists</p><span class="mono muted" style="font-size:12px">Top genre: indie pop · 14 artists</span></div>
+            <div class="eq" data-genres="10"></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section id="insights" aria-labelledby="h-insights">
+    <div><p class="eyebrow">07</p><h2 id="h-insights">Insights</h2>
+      <p class="lede">Built from your Spotify data export. Months run as a waveform with each year kept separate. There's also a new hour-by-day heatmap; the timestamps it needs are already in the export.</p></div>
+    <div class="scroll"><div class="frame desktop">
+      <div class="chrome"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">127.0.0.1:3000/#insights</span></div>
+      <div class="app">
+        <aside class="side" data-active="insights"></aside>
+        <div class="main">
+          <div class="topbar"><h3>Insights</h3><span class="sample">From your data export · Dec '23 – Nov '24</span></div>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px">
+            <div class="tile"><p class="label">Minutes listened</p><span class="big" style="font-size:30px">48,213</span><span class="mono muted" style="font-size:12px">about 33 days</span></div>
+            <div class="tile"><p class="label">Plays</p><span class="big" style="font-size:30px">21,904</span><span class="mono muted" style="font-size:12px">2.2 min per play</span></div>
+            <div class="tile"><p class="label">Artists</p><span class="big" style="font-size:30px">1,312</span><span class="mono muted" style="font-size:12px">different artists</span></div>
+            <div class="tile"><p class="label">Tracks</p><span class="big" style="font-size:30px">4,870</span><span class="mono muted" style="font-size:12px">different tracks</span></div>
+          </div>
+          <div class="tile"><p class="label">Minutes per month</p><div class="months" data-months></div></div>
+          <div class="bento">
+            <div class="tile span2">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+                <p class="label">When you listen · hour of day × weekday</p>
+                <div class="legend">Less <i style="--v:5%"></i><i style="--v:30%"></i><i style="--v:55%"></i><i style="--v:80%"></i><i style="--v:100%"></i> More</div>
+              </div>
+              <div class="heat" data-heat></div>
+              <span class="muted" style="font-size:14px">Peak: weekday evenings 18:00–19:00 and Friday nights.</span>
+            </div>
+            <div class="tile">
+              <p class="label">Most played artist</p>
+              <div style="display:flex;gap:14px;align-items:center"><div class="vinyl" style="--h:20;width:72px" aria-hidden="true"></div><div><b style="font-size:18px">Mira Vale</b><div class="mono muted" style="font-size:12px">1,204 plays · 3,890 min</div></div></div>
+              <div><span class="meter" data-v="0.081" data-n="20" data-label="8.1% of your listening"></span> <span class="mono">8.1%</span> <span class="muted" style="font-size:13px">of your listening</span></div>
+              <ol class="mono" style="margin:0;padding-left:22px;font-size:13px;display:grid;gap:4px">
+                <li>Glass Hours <span class="muted">· 212</span></li><li>Afterglow Index <span class="muted">· 167</span></li><li>Pale Blue Radio <span class="muted">· 133</span></li><li>Lantern <span class="muted">· 98</span></li><li>Coastline <span class="muted">· 71</span></li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section id="mobile" aria-labelledby="h-mobile">
+    <div><p class="eyebrow">08</p><h2 id="h-mobile">On a phone, and what changes</h2></div>
+    <div class="duo">
+      <div class="phone" aria-label="Phone mockup of the Overview screen">
+        <div class="pbody">
+          <div class="ptop"><span class="brand" style="padding:0" data-brand></span><span class="avatar">MS</span></div>
+          <div class="switch"><span class="on">4 weeks</span><span>6 months</span><span>All time</span></div>
+          <div class="tile"><p class="label">Minutes listened</p><span class="big">48,213</span><div class="months compact" data-months></div></div>
+          <div class="tile" style="flex-direction:row;align-items:center;gap:12px"><div class="art" style="--h:20;width:56px"></div><div style="min-width:0;flex:1"><p class="label">On repeat · #1</p><b>Glass Hours</b><div class="muted" style="font-size:13px">Mira Vale</div></div><span class="meter" data-v="0.78" data-n="8"></span></div>
+          <div class="tile" style="gap:2px"><p class="label" style="margin-bottom:6px">Recently played</p><div data-recent="3"></div></div>
+        </div>
+        <nav class="bottomnav" data-bottomnav></nav>
+      </div>
+      <div class="notes">
+        <div class="note"><h3>Navigation</h3><ul><li>Desktop gets a sidebar, phones get a bottom bar. Both have five items, the most a bottom bar should hold.</li><li>Recently played joins Overview, which takes the nav from six tabs to five.</li><li>The time range is one switch at the top of each page, with the same three choices everywhere.</li></ul></div>
+        <div class="note"><h3>Colour has a job</h3><ul><li>Amber means "selected" or "this is data". It is used for nothing else.</li><li>Green, amber and red appear only inside meters, so they never compete with buttons.</li><li>Body text is 17:1 on ink, and grey text is above 7:1 on panels.</li></ul></div>
+        <div class="note"><h3>Building it in this codebase</h3><ul><li>The colour and font tokens at the top of this page drop straight into <span class="mono">App.css</span> as CSS variables. The fonts go in <span class="mono">public/index.html</span>.</li><li>Waveforms, meters, EQ bars and vinyl are plain CSS, so there's no new library. Chart.js can stay for the month chart, or be replaced by CSS bars.</li><li>The heatmap needs one new loop over <span class="mono">endTime</span>, which already includes the hour.</li></ul></div>
+        <div class="note"><h3>Sample data</h3><p>Every artist, track and number on this page is made up so the layouts can be judged with realistic content.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const svg = (p, s = 20) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const icons = {
+  overview: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  tracks: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  artists: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/>',
+  genres: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  insights: '<path d="M2 12h3l3-8 4 16 3-10 2 2h5"/>',
+};
+const nav = [['overview', 'Overview'], ['tracks', 'Top tracks'], ['artists', 'Top artists'], ['genres', 'Genres'], ['insights', 'Insights']];
+const brand = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g style="fill:var(--signal)"><rect x="2" y="9" width="3" height="6" rx="1.5"/><rect x="7" y="5" width="3" height="14" rx="1.5"/><rect x="12" y="2" width="3" height="20" rx="1.5"/><rect x="17" y="7" width="3" height="10" rx="1.5"/></g></svg>WAVELENGTH';
+
+document.querySelectorAll('[data-brand]').forEach(el => el.innerHTML = brand);
+document.querySelectorAll('aside.side').forEach(a => {
+  a.innerHTML = `<div class="brand">${brand}</div>` +
+    nav.map(([k, n]) => `<div class="nav-item${k === a.dataset.active ? ' on' : ''}">${svg(icons[k])}${n}</div>`).join('') +
+    '<div class="who"><span class="avatar">MS</span><div><div>Signed in</div><div class="muted" style="font-size:12px">Log out</div></div></div>';
+});
+document.querySelectorAll('[data-bottomnav]').forEach(b => {
+  b.innerHTML = nav.map(([k, n], i) => `<span class="${i === 0 ? 'on' : ''}">${svg(icons[k], 22)}${n.replace('Top ', '')}</span>`).join('');
+});
+
+// Deterministic "random" so the waveforms look the same on every load
+const rng = seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+document.querySelectorAll('.wave[data-seed]').forEach(w => {
+  const r = rng(+w.dataset.seed), n = +w.dataset.n, played = +w.dataset.played;
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    const env = Math.sin(Math.PI * (i + .5) / n) * .55 + .45;
+    html += `<i class="${i / n < played ? 'past' : ''}" style="--h:${Math.max(8, Math.round((.3 + .7 * r()) * env * 100))}%"></i>`;
+  }
+  w.innerHTML = html;
+});
+
+document.querySelectorAll('.meter').forEach(m => {
+  const n = +m.dataset.n, v = +m.dataset.v, lit = Math.round(v * n);
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    const zone = i / n >= .82 ? 'clip' : i / n >= .6 ? 'hot' : '';
+    html += `<i class="${i < lit ? 'on ' + zone : ''}"></i>`;
+  }
+  m.innerHTML = html;
+  m.setAttribute('role', 'img');
+  m.setAttribute('aria-label', m.dataset.label || `Popularity ${Math.round(v * 100)} out of 100`);
+});
+
+const months = [["Dec '23", 3120], ['Jan', 4410], ['Feb', 3890], ['Mar', 4200], ['Apr', 3650], ['May', 4980], ['Jun', 5210], ['Jul', 4730], ['Aug', 3340], ['Sep', 3980], ['Oct', 4120], ["Nov '24", 2583]];
+const maxM = Math.max(...months.map(m => m[1]));
+document.querySelectorAll('[data-months]').forEach(el => {
+  const compact = el.classList.contains('compact');
+  el.innerHTML = months.map(([lab, v]) =>
+    `<div class="m${v === maxM ? ' max' : ''}" title="${lab}: ${v.toLocaleString()} min"><div class="slot"><i style="--h:${Math.round(v / maxM * 100)}%"></i></div>` +
+    `${compact ? '' : `<span class="lab">${lab}</span><span class="val">${(v / 1000).toFixed(1)}k</span>`}</div>`).join('');
+});
+
+const genres = [['indie pop', 14], ['alt rock', 12], ['uk garage', 10], ['neo soul', 9], ['house', 8], ['dream pop', 7], ['drum and bass', 6], ['lo-fi beats', 5], ['art pop', 4], ['post-punk', 3]];
+document.querySelectorAll('[data-genres]').forEach(el => {
+  const list = genres.slice(0, +el.dataset.genres), big = !el.classList.contains('mini');
+  el.innerHTML = list.map(([g, n]) =>
+    `<div class="bar" title="${g}: ${n} artists">${big ? `<span class="n">${n}</span>` : ''}<div class="col" style="--v:${Math.round(n / 14 * 100)}%"></div>${el.closest('.motif') ? '' : `<span class="name">${g}</span>`}</div>`).join('');
+});
+
+const tracks = [
+  ['Glass Hours', 'Mira Vale', 'Low Season', 20, 78], ['Low Tide Static', 'The Northern Lines', 'Breakwater', 200, 64],
+  ['Sodium Lights', 'Kito & Ren', 'Sodium Lights', 330, 71], ['Paper Satellites', 'Juno Marsh', 'Orbiter', 285, 55],
+  ['Overpass', 'Halcyon Avenue', 'City Hum', 160, 49], ['Soft Machine Heart', 'Delta Bloom', 'Soft Machine', 120, 82],
+  ['Night Bus Home', 'Ostra', 'N38', 240, 37], ['Afterglow Index', 'Mira Vale', 'Low Season', 20, 61],
+  ['Concrete Bloom', 'Field Theory', 'Concrete Bloom EP', 45, 28], ['Slow Signal', 'Juno Marsh', 'Orbiter', 285, 44],
+];
+const ext = svg('<path d="M14 3h7v7M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>', 16);
+const meter = (v, n) => { const lit = Math.round(v * n); return `<span class="meter" role="img" aria-label="Popularity ${Math.round(v * 100)} out of 100">${Array.from({ length: n }, (_, i) => `<i class="${i < lit ? 'on ' + (i / n >= .82 ? 'clip' : i / n >= .6 ? 'hot' : '') : ''}"></i>`).join('')}</span>`; };
+document.querySelectorAll('[data-tracks]').forEach(el => {
+  el.innerHTML = tracks.slice(1).map(([t, a, al, h, p], i) =>
+    `<div class="row"><span class="rank">${String(i + 2).padStart(2, '0')}</span><div class="art" style="--h:${h};width:44px"></div>` +
+    `<div style="min-width:0"><div class="t">${t}</div><div class="a">${a}</div></div><div class="a">${al}</div>` +
+    `<span>${meter(p / 100, 12)} <span class="mono" style="font-size:12px">${p}</span></span><span class="ext">${ext}</span></div>`).join('');
+});
+
+const artists = [['Juno Marsh', 'indie pop', 285], ['Mira Vale', 'dream pop', 20], ['Halcyon Avenue', 'alt rock', 160], ['The Northern Lines', 'post-punk', 200], ['Ostra', 'uk garage', 240],
+  ['Field Theory', 'house', 45], ['Delta Bloom', 'neo soul', 120], ['Kito & Ren', 'drum and bass', 330], ['Pale Atlas', 'lo-fi beats', 90], ['Sundial Club', 'art pop', 15]];
+document.querySelectorAll('[data-artists]').forEach(el => {
+  const skip = +(el.dataset.skip || 0), list = artists.slice(skip, +el.dataset.artists), small = el.dataset.size === 'small';
+  el.innerHTML = list.map(([n, g, h], i) => small
+    ? `<div style="display:grid;gap:8px;justify-items:center;text-align:center;min-width:0"><div class="vinyl" style="--h:${h};width:100%;max-width:96px"></div><span style="font-size:13px;font-weight:700">${n}</span></div>`
+    : `<div class="artist-card"><div class="vinyl" style="--h:${h}"></div><span class="rank">#${String(i + skip + 1).padStart(2, '0')}</span><b>${n}</b><span class="chip-t" style="justify-self:start">${g}</span></div>`).join('');
+});
+
+const recent = [['Night Bus Home', 'Ostra', 240, '4 min ago'], ['Glass Hours', 'Mira Vale', 20, '9 min ago'], ['Slow Signal', 'Juno Marsh', 285, '13 min ago'], ['Overpass', 'Halcyon Avenue', 160, '41 min ago'], ['Concrete Bloom', 'Field Theory', 45, '1 h ago'], ['Low Tide Static', 'The Northern Lines', 200, '2 h ago']];
+document.querySelectorAll('[data-recent]').forEach(el => {
+  el.innerHTML = recent.slice(0, +el.dataset.recent || 6).map(([t, a, h, ago]) =>
+    `<div class="row recent"><div class="art" style="--h:${h};width:44px"></div><div style="min-width:0"><div class="t">${t}</div><div class="a">${a}</div></div><span class="mono muted" style="font-size:12px">${ago}</span></div>`).join('');
+});
+
+// Sample listening pattern: commutes, weekday evenings, weekend late mornings, Friday nights
+const level = (d, h) => {
+  const wk = d < 5; let x = .05;
+  if (wk && h >= 7 && h <= 9) x += .5;
+  if (wk && h >= 12 && h <= 13) x += .25;
+  if (wk && h >= 17 && h <= 19) x += .6;
+  if (h >= 20 && h <= 23) x += .4 + (d === 4 || d === 5 ? .3 : 0);
+  if (!wk && h >= 10 && h <= 14) x += .5;
+  if (d >= 4 && h <= 1) x += .3;
+  return Math.min(1, x);
+};
+const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+document.querySelectorAll('[data-heat]').forEach(el => {
+  let html = '<span></span>' + Array.from({ length: 24 }, (_, h) => `<span class="hr">${h % 3 === 0 ? String(h).padStart(2, '0') : ''}</span>`).join('');
+  days.forEach((d, di) => {
+    html += `<span class="d">${d}</span>`;
+    for (let h = 0; h < 24; h++) { const v = level(di, h); html += `<i class="c" style="--v:${Math.round(v * 100)}%" title="${d} ${String(h).padStart(2, '0')}:00 · ${v > .66 ? 'high' : v > .33 ? 'medium' : 'low'}"></i>`; }
+  });
+  el.innerHTML = html;
+});
+</script>
+</body>
+</html>
