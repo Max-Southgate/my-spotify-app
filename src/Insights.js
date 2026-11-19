@@ -17,6 +17,8 @@ function Insights({ insights }) {
         topArtistDetails,
     } = insights;
 
+    if (!topArtist) return <p className="insights">Loading insights…</p>; // streaming history still loading
+
     const minutesEachDayChartData = { // Data for the daily listening minutes chart
         labels: sortedMintesEachDay.map(({ day }) => day),
         datasets: [
@@ -123,19 +125,21 @@ function Insights({ insights }) {
                         </ol>
                     </div>
 
-                    <div className="artist-details">
-                        <p><strong>Artist:</strong> {topArtistDetails.name}</p>
-                        <p><strong>Followers:</strong> {topArtistDetails.followers.total.toLocaleString()}</p>
-                        <p><strong>Genres:</strong> {topArtistDetails.genres.join(', ')}</p>
-                        <p><strong>Popularity:</strong> {topArtistDetails.popularity}/100</p>
-                        {topArtistDetails.images[0] && (
-                            <img
-                                src={topArtistDetails.images[0].url}
-                                alt={`${topArtist.artist} profile`}
-                                className="artist-image"
-                            />
-                        )}
-                    </div>
+                    {topArtistDetails && ( // missing until the Spotify search returns, or if it fails
+                        <div className="artist-details">
+                            <p><strong>Artist:</strong> {topArtistDetails.name}</p>
+                            <p><strong>Followers:</strong> {topArtistDetails.followers?.total?.toLocaleString()}</p>
+                            <p><strong>Genres:</strong> {topArtistDetails.genres?.join(', ')}</p>
+                            <p><strong>Popularity:</strong> {topArtistDetails.popularity}/100</p>
+                            {topArtistDetails.images?.[0] && (
+                                <img
+                                    src={topArtistDetails.images[0].url}
+                                    alt={`${topArtist.artist} profile`}
+                                    className="artist-image"
+                                />
+                            )}
+                        </div>
+                    )}
 
                     <div className="top-song-section">
                         <h3>Most Played Song</h3>

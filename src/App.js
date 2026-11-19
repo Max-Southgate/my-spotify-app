@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getTokenFromUrl } from './authService';
+import { getToken, logout } from './authService';
 import { getTopTracks, getTopArtists, getRecentPlays, getTopGenres, getArtistDetails } from './spotifyApi';
 import Login from './login';
 import TopTracks from './TopTracks';
@@ -23,14 +23,20 @@ function App() {
     const [timeRange, setTimeRange] = useState('short_term');
     const [totalMinutesListened, setTotalMinutesListened] = useState(0);
 
-    useEffect(() => { // Check if the URL contains a token and set it in the state
-        const hash = getTokenFromUrl();
-        window.location.hash = '';
-        const _token = hash.access_token;
-        if (_token) setToken(_token);
+    useEffect(() => { // Use a saved token, or finish the login Spotify just redirected back from
+        getToken().then((_token) => _token && setToken(_token)).catch(console.error);
     }, []);
 
     useEffect(() => {
+        const handleError = (error) => { // Expired token: forget it and show the login screen again
+            if (error.status === 401) {
+                logout();
+                setToken(null);
+            } else {
+                console.error(error);
+            }
+        };
+
         if (token) {
             if (!streamingData.length) {
                 Promise.all([ //promise.all is used to fetch multiple JSON files from the local directory
@@ -63,7 +69,7 @@ function App() {
                             totalMinutes: Math.floor(dayTotals[day] / 60000),
                         }));
 
-                        const dayOrder = ['Monday', 'Tuesday', 'Wedneday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                        const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
                         const sortedMintesEachDay = minutesEachDay.sort( // Sort the array based on the order of days
                             (a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day)
@@ -167,21 +173,21 @@ function App() {
                                         topArtistDetails: artistDetails,
                                     }));
                                 })
-                                .catch(console.error);
+                                .catch(handleError);
                         }
                     })
-                    .catch(console.error);
+                    .catch(handleError);
 
             }
 
             if (activeTab === 'tracks') {
-                getTopTracks(token, timeRange).then(setTracks).catch(console.error); // Fetch top tracks from Spotify API
+                getTopTracks(token, timeRange).then(setTracks).catch(handleError); // Fetch top tracks from Spotify API
             } else if (activeTab === 'artists') {
-                getTopArtists(token, timeRange).then(setArtists).catch(console.error); // Fetch top artists from Spotify API
+                getTopArtists(token, timeRange).then(setArtists).catch(handleError); // Fetch top artists from Spotify API
             } else if (activeTab === 'genres') {
-                getTopGenres(token, timeRange).then(setGenres).catch(console.error); // Fetch top genres from Spotify API
+                getTopGenres(token, timeRange).then(setGenres).catch(handleError); // Fetch top genres from Spotify API
             } else if (activeTab === 'recentlyPlayed') {
-                getRecentPlays(token).then(setRecentlyPlayed).catch(console.error); // Fetch recently played tracks from Spotify API
+                getRecentPlays(token).then(setRecentlyPlayed).catch(handleError); // Fetch recently played tracks from Spotify API
             } else if (activeTab === 'dashboard') {
                 Promise.all([ // Fetch top tracks, artists, genres, and recently played tracks for the dashboard
                     getTopTracks(token, 'short_term'),
@@ -197,7 +203,7 @@ function App() {
                             recentPlays: recentPlays.slice(0, 5),
                         });
                     })
-                    .catch(console.error);
+                    .catch(handleError);
             }
         }
     }, [token, activeTab, timeRange, streamingData]);
